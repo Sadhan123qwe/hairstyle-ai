@@ -1,0 +1,640 @@
+{% extends "base.html" %}
+
+{% block title %}Analyze Your Face - HairStyle AI{% endblock %}
+
+{% block content %}
+<section class="analyze-section">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-badge">AI Analysis</span>
+            <h1>Analyze Your Face Shape</h1>
+            <p>Upload a photo or use your live camera for instant AI-powered style recommendations</p>
+        </div>
+
+        <!-- Tab Switcher -->
+        <div class="input-tab-switcher">
+            <button class="input-tab active" id="tabUpload" onclick="switchTab('upload')">
+                <i class="fas fa-cloud-upload-alt"></i> Upload Photo
+            </button>
+            <button class="input-tab" id="tabCamera" onclick="switchTab('camera')">
+                <i class="fas fa-camera"></i> Live Camera
+            </button>
+        </div>
+
+        <div class="analyze-container">
+            <form id="analyzeForm" action="{{ url_for('analysis.analyze') }}" method="POST" enctype="multipart/form-data">
+
+                <!-- ===== UPLOAD PANEL ===== -->
+                <div id="panelUpload">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-placeholder" id="uploadPlaceholder">
+                            <div class="upload-icon">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <h3>Drag &amp; Drop your photo here</h3>
+                            <p>or click to browse files</p>
+                            <span class="upload-hint">Supports JPG, PNG, JPEG (Max 16MB)</span>
+                        </div>
+                        <div class="upload-preview" id="uploadPreview" style="display:none;">
+                            <img id="previewImg" src="" alt="Preview" class="preview-image">
+                            <button type="button" class="remove-image" id="removeImage">
+                                <i class="fas fa-times"></i> Remove
+                            </button>
+                        </div>
+                        <input type="file" id="imageInput" name="image" accept="image/*" class="file-input">
+                    </div>
+                </div>
+
+                <!-- ===== CAMERA PANEL ===== -->
+                <div id="panelCamera" style="display:none;">
+                    <div class="camera-card">
+
+                        <!-- Video Feed -->
+                        <div class="camera-viewport" id="cameraViewport">
+                            <video id="cameraVideo" autoplay playsinline muted class="camera-video"></video>
+                            <canvas id="cameraCanvas" class="camera-canvas" style="display:none;"></canvas>
+                            <div class="camera-overlay-ring"></div>
+                            <div class="camera-idle-placeholder" id="cameraIdlePlaceholder">
+                                <i class="fas fa-camera-retro"></i>
+                                <p>Click <strong>"Open Camera"</strong> to start</p>
+                            </div>
+                        </div>
+
+                        <!-- Camera Status -->
+                        <div class="camera-status" id="cameraStatus"></div>
+
+                        <!-- Camera Controls -->
+                        <div class="camera-controls">
+                            <button type="button" class="btn-cam btn-cam-open" id="btnOpenCamera">
+                                <i class="fas fa-video"></i> Open Camera
+                            </button>
+                            <button type="button" class="btn-cam btn-cam-capture" id="btnCapture" style="display:none;">
+                                <i class="fas fa-circle"></i> Capture Photo
+                            </button>
+                            <button type="button" class="btn-cam btn-cam-retake" id="btnRetake" style="display:none;">
+                                <i class="fas fa-redo"></i> Retake
+                            </button>
+                            <button type="button" class="btn-cam btn-cam-stop" id="btnStopCamera" style="display:none;">
+                                <i class="fas fa-stop"></i> Stop Camera
+                            </button>
+                        </div>
+
+                        <!-- Capture Preview -->
+                        <div class="capture-preview-wrap" id="capturePreviewWrap" style="display:none;">
+                            <img id="capturePreviewImg" src="" alt="Captured Photo" class="capture-preview-img">
+                            <span class="capture-badge"><i class="fas fa-check-circle"></i> Photo Captured</span>
+                        </div>
+
+                    </div>
+                </div>
+
+
+
+                <!-- Tips -->
+                <div class="tips-card">
+                    <h4><i class="fas fa-lightbulb"></i> Tips for Best Results</h4>
+                    <ul class="tips-list">
+                        <li><i class="fas fa-check"></i> Use a clear, well-lit front-facing photo</li>
+                        <li><i class="fas fa-check"></i> Look directly at the camera</li>
+                        <li><i class="fas fa-check"></i> Avoid heavy shadows on your face</li>
+                        <li><i class="fas fa-check"></i> Make sure your full face is visible</li>
+                        <li><i class="fas fa-check"></i> Pull back hair to expose face shape</li>
+                    </ul>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" class="btn btn-primary btn-full btn-large" id="analyzeBtn">
+                    <i class="fas fa-brain"></i> Analyze My Face Shape
+                </button>
+
+                <!-- Loading Overlay -->
+                <div class="analyzing-overlay" id="analyzingOverlay" style="display:none;">
+                    <div class="analyzing-content">
+                        <div class="ai-spinner">
+                            <div class="spinner-ring"></div>
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <h3>Analyzing Your Face...</h3>
+                        <p>Our AI is detecting facial landmarks and determining your face shape.</p>
+                        <div class="progress-steps">
+                            <div class="progress-step active" id="step1">
+                                <i class="fas fa-camera"></i> Processing Image
+                            </div>
+                            <div class="progress-step" id="step2">
+                                <i class="fas fa-robot"></i> Detecting Gender
+                            </div>
+                            <div class="progress-step" id="step3">
+                                <i class="fas fa-search"></i> Detecting Landmarks
+                            </div>
+                            <div class="progress-step" id="step4">
+                                <i class="fas fa-cut"></i> Getting Recommendations
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+/* ---- Tab Switcher ---- */
+.input-tab-switcher {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 28px;
+}
+.input-tab {
+    padding: 11px 28px;
+    border: 2px solid var(--gold, #c9a84c);
+    background: transparent;
+    color: var(--gold, #c9a84c);
+    border-radius: 50px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    letter-spacing: 0.03em;
+}
+.input-tab:hover {
+    background: rgba(201,168,76,0.12);
+}
+.input-tab.active {
+    background: var(--gold, #c9a84c);
+    color: #111;
+    box-shadow: 0 4px 18px rgba(201,168,76,0.35);
+}
+
+/* ---- Camera Card ---- */
+.camera-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 20px;
+}
+
+/* ---- Camera Viewport ---- */
+.camera-viewport {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto 20px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #0a0a0a;
+    aspect-ratio: 4/3;
+    border: 2px solid rgba(201,168,76,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.camera-video,
+.camera-canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 14px;
+    transform: scaleX(-1); /* mirror */
+}
+.camera-overlay-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    box-shadow: inset 0 0 0 3px rgba(201,168,76,0.15);
+    pointer-events: none;
+}
+.camera-idle-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.35);
+    gap: 10px;
+}
+.camera-idle-placeholder i {
+    font-size: 3rem;
+    color: rgba(201,168,76,0.4);
+}
+.camera-idle-placeholder p {
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+/* ---- Camera Status ---- */
+.camera-status {
+    text-align: center;
+    font-size: 0.85rem;
+    min-height: 22px;
+    margin-bottom: 14px;
+    color: var(--gold, #c9a84c);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+}
+
+/* ---- Camera Buttons ---- */
+.camera-controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+.btn-cam {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 50px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-cam-open  { background: linear-gradient(135deg,#4e8cff,#1a5cff); color:#fff; }
+.btn-cam-open:hover  { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(78,140,255,.45); }
+.btn-cam-capture { background: linear-gradient(135deg,#c9a84c,#a07830); color:#111; }
+.btn-cam-capture:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(201,168,76,.45); }
+.btn-cam-retake { background: rgba(255,255,255,0.1); color:#fff; border: 1px solid rgba(255,255,255,0.2); }
+.btn-cam-retake:hover { background: rgba(255,255,255,0.18); transform: translateY(-2px); }
+.btn-cam-stop  { background: rgba(220,60,60,0.18); color:#f96464; border: 1px solid rgba(220,60,60,0.3); }
+.btn-cam-stop:hover  { background: rgba(220,60,60,0.28); transform: translateY(-2px); }
+
+/* pulse ring on capture button */
+.btn-cam-capture {
+    position: relative;
+}
+.btn-cam-capture .fas.fa-circle {
+    animation: pulse-dot 1.2s infinite;
+}
+@keyframes pulse-dot {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:0.5; transform:scale(1.35); }
+}
+
+/* ---- Capture Preview ---- */
+.capture-preview-wrap {
+    text-align: center;
+    margin-top: 4px;
+}
+.capture-preview-img {
+    width: 100%;
+    max-width: 320px;
+    border-radius: 14px;
+    border: 2px solid rgba(201,168,76,0.5);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    transform: scaleX(-1);
+}
+.capture-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 5px 16px;
+    background: rgba(80,200,120,0.15);
+    border: 1px solid rgba(80,200,120,0.4);
+    border-radius: 50px;
+    font-size: 0.82rem;
+    color: #6dda9a;
+    font-weight: 600;
+}
+/* ---- Gender AI Notice ---- */
+.gender-ai-notice {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: linear-gradient(135deg, rgba(66,135,245,0.08), rgba(201,168,76,0.08));
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 14px;
+    padding: 14px 18px;
+}
+.gender-ai-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg,#4287f5,#c9a84c);
+    border-radius: 50%;
+    font-size: 1.1rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+.gender-ai-text {
+    flex: 1;
+}
+.gender-ai-text strong {
+    font-size: 0.95rem;
+    color: var(--gold, #c9a84c);
+    display: block;
+    margin-bottom: 2px;
+}
+.gender-ai-text p {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.55);
+    margin: 0;
+    line-height: 1.4;
+}
+.gender-ai-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    background: rgba(201,168,76,0.15);
+    border: 1px solid rgba(201,168,76,0.35);
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--gold, #c9a84c);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+</style>
+
+<script>
+/* =====================================================================
+   TAB SWITCHING
+   ===================================================================== */
+function switchTab(tab) {
+    const uploadPanel = document.getElementById('panelUpload');
+    const cameraPanel = document.getElementById('panelCamera');
+    const tabUpload   = document.getElementById('tabUpload');
+    const tabCamera   = document.getElementById('tabCamera');
+
+    if (tab === 'upload') {
+        uploadPanel.style.display = '';
+        cameraPanel.style.display = 'none';
+        tabUpload.classList.add('active');
+        tabCamera.classList.remove('active');
+        stopCamera();
+        imageInput.removeAttribute('required'); // camera path sets file dynamically
+    } else {
+        uploadPanel.style.display = 'none';
+        cameraPanel.style.display = '';
+        tabUpload.classList.remove('active');
+        tabCamera.classList.add('active');
+        // Clear any file from upload tab so camera-captured image is used
+        imageInput.value = '';
+        uploadPlaceholder.style.display = 'flex';
+        uploadPreview.style.display = 'none';
+        previewImg.src = '';
+    }
+}
+
+/* =====================================================================
+   UPLOAD TAB — existing logic
+   ===================================================================== */
+const uploadArea        = document.getElementById('uploadArea');
+const imageInput        = document.getElementById('imageInput');
+const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+const uploadPreview     = document.getElementById('uploadPreview');
+const previewImg        = document.getElementById('previewImg');
+const removeImage       = document.getElementById('removeImage');
+const analyzeForm       = document.getElementById('analyzeForm');
+const analyzeBtn        = document.getElementById('analyzeBtn');
+const analyzingOverlay  = document.getElementById('analyzingOverlay');
+
+uploadArea.addEventListener('click', (e) => {
+    if (!e.target.closest('.remove-image') && !e.target.closest('.preview-image')) {
+        imageInput.click();
+    }
+});
+
+uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('drag-over');
+});
+
+uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('drag-over');
+});
+
+uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+        handleFile(file);
+    }
+});
+
+imageInput.addEventListener('change', () => {
+    if (imageInput.files[0]) {
+        handleFile(imageInput.files[0]);
+    }
+});
+
+function handleFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        previewImg.src = e.target.result;
+        uploadPlaceholder.style.display = 'none';
+        uploadPreview.style.display = 'flex';
+    };
+    reader.readAsDataURL(file);
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    imageInput.files = dt.files;
+}
+
+removeImage.addEventListener('click', () => {
+    imageInput.value = '';
+    previewImg.src = '';
+    uploadPlaceholder.style.display = 'flex';
+    uploadPreview.style.display = 'none';
+});
+
+/* =====================================================================
+   CAMERA TAB
+   ===================================================================== */
+const cameraVideo           = document.getElementById('cameraVideo');
+const cameraCanvas          = document.getElementById('cameraCanvas');
+const cameraIdlePlaceholder = document.getElementById('cameraIdlePlaceholder');
+const cameraStatus          = document.getElementById('cameraStatus');
+const capturePreviewWrap    = document.getElementById('capturePreviewWrap');
+const capturePreviewImg     = document.getElementById('capturePreviewImg');
+
+const btnOpenCamera  = document.getElementById('btnOpenCamera');
+const btnCapture     = document.getElementById('btnCapture');
+const btnRetake      = document.getElementById('btnRetake');
+const btnStopCamera  = document.getElementById('btnStopCamera');
+
+let mediaStream = null;
+let photoBlob   = null;
+
+function setStatus(msg, color) {
+    cameraStatus.textContent = msg;
+    cameraStatus.style.color = color || 'var(--gold, #c9a84c)';
+}
+
+/* ---- Open Camera ---- */
+btnOpenCamera.addEventListener('click', async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setStatus('⚠ Camera API not supported in this browser.', '#f96464');
+        return;
+    }
+    try {
+        setStatus('Requesting camera access…');
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+            audio: false
+        });
+        cameraVideo.srcObject = mediaStream;
+        cameraVideo.style.display = 'block';
+        cameraCanvas.style.display = 'none';
+        cameraIdlePlaceholder.style.display = 'none';
+        capturePreviewWrap.style.display = 'none';
+        photoBlob = null;
+
+        btnOpenCamera.style.display = 'none';
+        btnCapture.style.display    = 'flex';
+        btnStopCamera.style.display = 'flex';
+        btnRetake.style.display     = 'none';
+
+        setStatus('🟢 Camera live — position your face and capture!', '#6dda9a');
+    } catch (err) {
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            setStatus('⚠ Camera permission denied. Please allow access and try again.', '#f96464');
+        } else {
+            setStatus('⚠ Could not open camera: ' + err.message, '#f96464');
+        }
+    }
+});
+
+/* ---- Capture Photo ---- */
+btnCapture.addEventListener('click', () => {
+    const video = cameraVideo;
+    const canvas = cameraCanvas;
+
+    canvas.width  = video.videoWidth  || 640;
+    canvas.height = video.videoHeight || 480;
+
+    const ctx = canvas.getContext('2d');
+    // Mirror horizontally so saved image matches what user sees
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Show canvas (frozen frame), hide live video
+    cameraVideo.style.display = 'none';
+    cameraCanvas.style.display = 'block';
+
+    // Convert canvas to Blob and inject into file input
+    canvas.toBlob((blob) => {
+        photoBlob = blob;
+        const file = new File([blob], 'camera_capture.jpg', { type: 'image/jpeg' });
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        imageInput.files = dt.files;
+
+        // Show preview thumbnail
+        const url = URL.createObjectURL(blob);
+        capturePreviewImg.src = url;
+        capturePreviewWrap.style.display = 'block';
+
+        setStatus('✅ Photo captured! Click "Analyze My Face Shape" to proceed.', '#6dda9a');
+    }, 'image/jpeg', 0.92);
+
+    btnCapture.style.display  = 'none';
+    btnRetake.style.display   = 'flex';
+    btnStopCamera.style.display = 'none';
+});
+
+/* ---- Retake ---- */
+btnRetake.addEventListener('click', () => {
+    if (!mediaStream) {
+        // Stream was stopped, reopen
+        btnOpenCamera.click();
+        return;
+    }
+    // Restart preview
+    cameraVideo.style.display = 'block';
+    cameraCanvas.style.display = 'none';
+    capturePreviewWrap.style.display = 'none';
+    photoBlob = null;
+    imageInput.value = '';
+
+    btnCapture.style.display    = 'flex';
+    btnRetake.style.display     = 'none';
+    btnStopCamera.style.display = 'flex';
+    setStatus('🟢 Camera live — position your face and capture!', '#6dda9a');
+});
+
+/* ---- Stop Camera ---- */
+btnStopCamera.addEventListener('click', () => {
+    stopCamera();
+    setStatus('Camera stopped.');
+    btnOpenCamera.style.display = 'flex';
+    btnCapture.style.display    = 'none';
+    btnRetake.style.display     = 'none';
+    btnStopCamera.style.display = 'none';
+    cameraIdlePlaceholder.style.display = 'flex';
+    cameraVideo.style.display = 'none';
+    cameraCanvas.style.display = 'none';
+});
+
+function stopCamera() {
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+    }
+    cameraVideo.srcObject = null;
+}
+
+/* =====================================================================
+   FORM SUBMISSION — works for both tabs
+   ===================================================================== */
+analyzeForm.addEventListener('submit', (e) => {
+    const isCameraTab = document.getElementById('panelCamera').style.display !== 'none';
+
+    if (isCameraTab) {
+        // Camera mode: verify a photo has been captured
+        if (!photoBlob || !imageInput.files[0]) {
+            e.preventDefault();
+            alert('Please capture a photo first using the "Capture Photo" button.');
+            return;
+        }
+    } else {
+        // Upload mode: verify a file has been selected
+        if (!imageInput.files[0]) {
+            e.preventDefault();
+            alert('Please select an image first.');
+            return;
+        }
+    }
+
+    // Stop camera stream if still running
+    stopCamera();
+
+    analyzeBtn.disabled = true;
+    analyzingOverlay.style.display = 'flex';
+
+    // Animate progress steps (now 4 steps)
+    let step = 1;
+    const interval = setInterval(() => {
+        if (step < 4) {
+            step++;
+            document.querySelectorAll('.progress-step').forEach((s, i) => {
+                s.classList.toggle('active', i < step);
+            });
+        } else {
+            clearInterval(interval);
+        }
+    }, 900);
+});
+
+// Stop camera when page is hidden (tab switch / navigation)
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+        stopCamera();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Analysis History - HairStyle AI{% endblock %}
+
+{% block content %}
+<section class="history-section">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-badge">Your Journey</span>
+            <h1>Analysis History</h1>
+            <p>All your past face shape analyses and style recommendations</p>
+        </div>
+        
+        {% if history_items %}
+            <div class="history-grid">
+                {% for item in history_items %}
+                <div class="history-card">
+                    <div class="history-card-image">
+                        <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" 
+                             alt="Analysis {{ loop.index }}"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div class="history-placeholder" style="display:none;">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="history-card-overlay">
+                            <span class="history-shape-badge">{{ item.face_shape | capitalize }}</span>
+                        </div>
+                    </div>
+                    <div class="history-card-body">
+                        <div class="history-card-meta">
+                            <span class="hc-shape">
+                                <i class="fas fa-user"></i> {{ item.face_shape | capitalize }} Face
+                            </span>
+                            <span class="hc-gender">
+                                <i class="fas fa-{{ 'mars' if item.gender == 'male' else 'venus' }}"></i>
+                                {{ item.gender | capitalize }}
+                            </span>
+                        </div>
+                        <div class="history-card-date">
+                            <i class="fas fa-calendar-alt"></i>
+                            {{ item.analyzed_at.strftime('%d %B %Y, %I:%M %p') if item.analyzed_at else 'N/A' }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="history-footer">
+                <a href="{{ url_for('analysis.analyze') }}" class="btn btn-primary">
+                    <i class="fas fa-camera"></i> New Analysis
+                </a>
+            </div>
+        {% else %}
+            <div class="empty-state large-empty">
+                <i class="fas fa-camera-retro"></i>
+                <h2>No Analyses Yet</h2>
+                <p>You haven't analyzed any photos yet. Upload your first photo to get personalized hair and beard style recommendations!</p>
+                <a href="{{ url_for('analysis.analyze') }}" class="btn btn-primary btn-large">
+                    <i class="fas fa-camera"></i> Start Your First Analysis
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

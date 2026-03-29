@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}HairStyle AI - Discover Your Perfect Look{% endblock %}
+
+{% block content %}
+
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-content">
+        <div class="hero-badge">
+            <i class="fas fa-brain"></i>
+            <span>AI-Powered Face Analysis</span>
+        </div>
+        <h1 class="hero-title">
+            Find Your <span class="gradient-text">Perfect Style</span><br>
+            Based on Your Face Shape
+        </h1>
+        <p class="hero-subtitle">
+            Upload your photo and let our advanced AI analyze your face shape to recommend 
+            the best hairstyles and beard styles tailored specifically for you.
+        </p>
+        <div class="hero-actions">
+            {% if session.get('user_id') %}
+                <a href="{{ url_for('analysis.analyze') }}" class="btn btn-primary btn-large">
+                    <i class="fas fa-camera"></i> Analyze My Face
+                </a>
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline btn-large">
+                    <i class="fas fa-tachometer-alt"></i> My Dashboard
+                </a>
+            {% else %}
+                <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-large">
+                    <i class="fas fa-rocket"></i> Get Started Free
+                </a>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-outline btn-large">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </a>
+            {% endif %}
+        </div>
+        <div class="hero-stats">
+            <div class="stat">
+                <span class="stat-number">6</span>
+                <span class="stat-label">Face Shapes</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat">
+                <span class="stat-number">50+</span>
+                <span class="stat-label">Style Options</span>
+            </div>
+
+        </div>
+    </div>
+    <div class="hero-visual">
+        <div class="hero-card floating">
+            <i class="fas fa-cut hero-icon"></i>
+            <div class="hero-card-rings">
+                <div class="ring ring-1"></div>
+                <div class="ring ring-2"></div>
+                <div class="ring ring-3"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works -->
+<section class="section" id="how-it-works">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-badge">Simple Process</span>
+            <h2>How It Works</h2>
+            <p>Get personalized style recommendations in just 3 easy steps</p>
+        </div>
+        
+        <div class="steps-grid">
+            <div class="step-card" data-step="1">
+                <div class="step-icon">
+                    <i class="fas fa-user-plus"></i>
+                </div>
+                <div class="step-number">01</div>
+                <h3>Create Account</h3>
+                <p>Sign up for free and create your personal profile to save your style history.</p>
+            </div>
+            
+            <div class="step-connector"></div>
+            
+            <div class="step-card" data-step="2">
+                <div class="step-icon">
+                    <i class="fas fa-camera"></i>
+                </div>
+                <div class="step-number">02</div>
+                <h3>Upload Photo</h3>
+                <p>Upload a clear front-facing photo. Our AI will detect your face with precision.</p>
+            </div>
+            
+            <div class="step-connector"></div>
+            
+            <div class="step-card" data-step="3">
+                <div class="step-icon">
+                    <i class="fas fa-magic"></i>
+                </div>
+                <div class="step-number">03</div>
+                <h3>Get Recommendations</h3>
+                <p>Receive personalized hairstyle and beard style recommendations instantly.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Face Shapes Section -->
+<section class="section section-dark" id="face-shapes">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-badge">Face Analysis</span>
+            <h2>Supported Face Shapes</h2>
+            <p>Our AI detects and analyzes 6 distinct face shapes</p>
+        </div>
+        
+        <div class="face-shapes-grid">
+            {% set shapes = [
+                ('oval', 'fa-circle', 'Oval', 'The most versatile face shape. Most hairstyles look great!'),
+                ('round', 'fa-circle', 'Round', 'Full cheeks and soft curves. Best with elongating styles.'),
+                ('square', 'fa-square', 'Square', 'Strong jawline and wide width. Suit angles and texture.'),
+                ('heart', 'fa-heart', 'Heart', 'Wide forehead, narrow chin. Balanced styles work best.'),
+                ('diamond', 'fa-gem', 'Diamond', 'Wide cheekbones, narrow chin and forehead.'),
+                ('oblong', 'fa-rectangle-portrait', 'Oblong', 'Longer face, similar width throughout. Add width.')
+            ] %}
+            {% for shape_id, icon, name, desc in shapes %}
+            <div class="shape-card">
+                <div class="shape-icon">
+                    <i class="fas {{ icon }}"></i>
+                </div>
+                <h3>{{ name }}</h3>
+                <p>{{ desc }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="section" id="features">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-badge">Features</span>
+            <h2>Why Choose HairStyle AI?</h2>
+            <p>Advanced technology meets personalized grooming advice</p>
+        </div>
+        
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon gradient-purple">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <h3>AI Face Detection</h3>
+                <p>Using MediaPipe and deep learning to accurately detect 468 facial landmarks for precise face shape analysis.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon gradient-blue">
+                    <i class="fas fa-cut"></i>
+                </div>
+                <h3>50+ Style Options</h3>
+                <p>Curated collection of hairstyles and beard styles for each face shape, updated with latest trends.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon gradient-green">
+                    <i class="fas fa-venus-mars"></i>
+                </div>
+                <h3>Gender-Specific</h3>
+                <p>Separate recommendations for males and females, tailored to different styling needs and preferences.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon gradient-orange">
+                    <i class="fas fa-history"></i>
+                </div>
+                <h3>Style History</h3>
+                <p>Save and review your past analyses. Track your style evolution over time with your personal history.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon gradient-pink">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h3>Secure & Private</h3>
+                <p>Your photos and data are protected with industry-standard encryption. We take your privacy seriously.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon gradient-teal">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <h3>Instant Results</h3>
+                <p>Get comprehensive style recommendations in seconds. No waiting, no lengthy processing times.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta-section">
+    <div class="container">
+        <div class="cta-card">
+            <div class="cta-content">
+                <h2>Ready to Discover Your Perfect Style?</h2>
+                <p>Join thousands of users who have found their ideal hairstyle and beard style with HairStyle AI.</p>
+                {% if not session.get('user_id') %}
+                <a href="{{ url_for('auth.register') }}" class="btn btn-white btn-large">
+                    <i class="fas fa-rocket"></i> Start For Free
+                </a>
+                {% else %}
+                <a href="{{ url_for('analysis.analyze') }}" class="btn btn-white btn-large">
+                    <i class="fas fa-camera"></i> Analyze My Face Now
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

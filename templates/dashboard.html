@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - HairStyle AI{% endblock %}
+
+{% block content %}
+<section class="dashboard-section">
+    <div class="container">
+        <!-- Dashboard Header -->
+        <div class="dashboard-header">
+            <div class="dashboard-welcome">
+                <div class="welcome-avatar">
+                    {{ session.username[0].upper() if session.username else 'U' }}
+                </div>
+                <div class="welcome-text">
+                    <h1>Welcome back, <span class="gradient-text">{{ session.username }}</span>!</h1>
+                    <p>Ready to discover your next perfect hairstyle?</p>
+                </div>
+            </div>
+            <a href="{{ url_for('analysis.analyze') }}" class="btn btn-primary">
+                <i class="fas fa-camera"></i> New Analysis
+            </a>
+        </div>
+        
+        <!-- Stats Row -->
+        <div class="dashboard-stats">
+            <div class="dash-stat-card">
+                <div class="dash-stat-icon gradient-purple">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <div class="dash-stat-info">
+                    <span class="dash-stat-number">{{ recent_history | length }}</span>
+                    <span class="dash-stat-label">Recent Analyses</span>
+                </div>
+            </div>
+            
+            <div class="dash-stat-card">
+                <div class="dash-stat-icon gradient-blue">
+                    <i class="fas fa-cut"></i>
+                </div>
+                <div class="dash-stat-info">
+                    <span class="dash-stat-number">50+</span>
+                    <span class="dash-stat-label">Style Options</span>
+                </div>
+            </div>
+            
+            <div class="dash-stat-card">
+                <div class="dash-stat-icon gradient-green">
+                    <i class="fas fa-magic"></i>
+                </div>
+                <div class="dash-stat-info">
+                    <span class="dash-stat-number">AI</span>
+                    <span class="stat-label">Powered</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="dashboard-grid">
+            <div class="dash-main">
+                <div class="dash-card">
+                    <div class="dash-card-header">
+                        <h2><i class="fas fa-history"></i> Recent Analyses</h2>
+                        <a href="{{ url_for('analysis.history') }}" class="btn btn-sm btn-outline">View All</a>
+                    </div>
+                    
+                    {% if recent_history %}
+                        <div class="history-list">
+                            {% for item in recent_history %}
+                            <div class="history-item">
+                                <div class="history-thumb">
+                                    <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" 
+                                         alt="Analysis image"
+                                         onerror="this.src='{{ url_for('static', filename='images/placeholder.svg') }}'">
+                                </div>
+                                <div class="history-info">
+                                    <span class="history-shape badge badge-{{ item.face_shape }}">
+                                        {{ item.face_shape | capitalize }} Face
+                                    </span>
+                                    <span class="history-gender">
+                                        <i class="fas fa-{{ 'mars' if item.gender == 'male' else 'venus' }}"></i>
+                                        {{ item.gender | capitalize }}
+                                    </span>
+                                    <span class="history-date">
+                                        <i class="fas fa-calendar-alt"></i>
+                                        {{ item.analyzed_at.strftime('%d %b %Y') if item.analyzed_at else 'N/A' }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-camera-retro"></i>
+                            <h3>No analyses yet</h3>
+                            <p>Upload your first photo to get personalized style recommendations!</p>
+                            <a href="{{ url_for('analysis.analyze') }}" class="btn btn-primary">
+                                <i class="fas fa-camera"></i> Start Analysis
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="dash-sidebar">
+                <div class="dash-card">
+                    <div class="dash-card-header">
+                        <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
+                    </div>
+                    <div class="quick-actions">
+                        <a href="{{ url_for('analysis.analyze') }}" class="quick-action-btn">
+                            <i class="fas fa-camera"></i>
+                            <span>Analyze Face</span>
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                        <a href="{{ url_for('analysis.history') }}" class="quick-action-btn">
+                            <i class="fas fa-history"></i>
+                            <span>View History</span>
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                        <a href="{{ url_for('main.about') }}" class="quick-action-btn">
+                            <i class="fas fa-info-circle"></i>
+                            <span>About Project</span>
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                        <a href="{{ url_for('auth.logout') }}" class="quick-action-btn danger">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Logout</span>
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="dash-card tip-card">
+                    <div class="tip-icon">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <h3>Pro Tip</h3>
+                    <p>For best results, use a clear, well-lit front-facing photo with your hair pulled back to expose your face shape.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

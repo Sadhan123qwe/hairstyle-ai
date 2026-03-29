@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.egg
+*.egg-info/
+dist/
+build/
+*.spec
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+ENV/
+
+# Environment secrets – NEVER commit .env
+.env
+
+# Uploads (user files)
+static/uploads/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test artefacts
+test_output.txt
+*.txt.bak
+
+# Model caches (large binary files)
+utils/gender_models/*.h5
+utils/gender_models/*.pkl
+models/
+data/
+
+# Pytest / Coverage
+.pytest_cache/
+htmlcov/
+.coverage

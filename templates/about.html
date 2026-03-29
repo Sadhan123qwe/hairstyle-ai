@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}About - HairStyle AI{% endblock %}
+
+{% block content %}
+<section class="about-section">
+    <div class="container">
+        <div class="about-hero">
+            <div class="section-badge">Academic Project</div>
+            <h1>About This Project</h1>
+            <p class="about-subtitle">Aesthetic Analysis of Hair and Beard Styling for Diverse Face Shapes</p>
+        </div>
+
+        <div class="about-grid">
+            <div class="about-content">
+                <div class="about-card">
+                    <h2><i class="fas fa-file-alt"></i> Abstract</h2>
+                    <p>
+                        The styling of human hair and beards plays a significant role in shaping facial appearance,
+                        influencing perceived identity, personality, and cultural expression. As one of the most visually
+                        prominent features of the human body, hair and beard styles contribute to first impressions by
+                        framing facial structures and enhancing or softening key anatomical features.
+                    </p>
+                    <p>
+                        This project explores the relationship between hairstyle, beard design, and facial morphology,
+                        focusing on how intentional grooming choices can harmonize with or modify the visual proportions
+                        of the face. By examining a broad range of face shapes—including oval, round, square, rectangular,
+                        diamond, and heart-shaped—we highlight styling principles that help achieve aesthetic balance.
+                    </p>
+                </div>
+
+                <div class="about-card">
+                    <h2><i class="fas fa-cogs"></i> Technology Stack</h2>
+                    <div class="tech-grid">
+                        <div class="tech-item">
+                            <div class="tech-icon frontend">
+                                <i class="fas fa-code"></i>
+                            </div>
+                            <div class="tech-info">
+                                <h4>Front-End</h4>
+                                <p>HTML5, CSS3, JavaScript</p>
+                            </div>
+                        </div>
+                        <div class="tech-item">
+                            <div class="tech-icon backend">
+                                <i class="fab fa-python"></i>
+                            </div>
+                            <div class="tech-info">
+                                <h4>Back-End</h4>
+                                <p>Flask, Python</p>
+                            </div>
+                        </div>
+                        <div class="tech-item">
+                            <div class="tech-icon ai">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <div class="tech-info">
+                                <h4>Algorithm</h4>
+                                <p>CNN, MediaPipe</p>
+                            </div>
+                        </div>
+                        <div class="tech-item">
+                            <div class="tech-icon db">
+                                <i class="fas fa-database"></i>
+                            </div>
+                            <div class="tech-info">
+                                <h4>Database</h4>
+                                <p>MongoDB</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+
+            <div class="about-sidebar">
+                <div class="student-card">
+                    <div class="student-avatar">ST</div>
+                    <h3>S. Thiruselvam</h3>
+                    <p class="roll-no">Roll No: 23COS263</p>
+                    <div class="student-divider"></div>
+                    <p class="student-note">Computer Science Student &mdash; Academic Project 2024</p>
+                </div>
+                
+                <div class="about-stats-card">
+                    <h3>Project Stats</h3>
+                    <div class="about-stats">
+                        <div class="about-stat">
+                            <span class="as-num">6</span>
+                            <span class="as-label">Face Shapes</span>
+                        </div>
+                        <div class="about-stat">
+                            <span class="as-num">50+</span>
+                            <span class="as-label">Style Options</span>
+                        </div>
+                        <div class="about-stat">
+                            <span class="as-num">468</span>
+                            <span class="as-label">Facial Landmarks</span>
+                        </div>
+                        <div class="about-stat">
+                            <span class="as-num">CNN</span>
+                            <span class="as-label">Algorithm</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

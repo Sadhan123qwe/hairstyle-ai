@@ -1,0 +1,916 @@
+{% extends "base.html" %}
+
+{% block title %}Your Results - HairStyle AI{% endblock %}
+
+{% block extra_css %}
+<!-- Classic serif font for headings -->
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ═══════════════════════════════════════════════
+   CLASSIC PREMIUM RESULT PAGE
+   ═══════════════════════════════════════════════ */
+
+/* ── CSS Variables (classic gold palette) ── */
+:root {
+  --gold:        #d4a94a;
+  --gold-light:  #f0cc7a;
+  --gold-dark:   #9a7428;
+  --gold-glow:   rgba(212, 169, 74, 0.35);
+  --cream:       #f5f0e8;
+  --royal:       #2a0a5e;
+  --bg-deep:     #09091a;
+  --glass:       rgba(255,255,255,0.04);
+  --glass-border:rgba(212,169,74,0.18);
+  --serif:       'Cormorant Garamond', Georgia, serif;
+  --display:     'Cinzel', serif;
+}
+
+/* ── Page canvas ── */
+.result-section {
+  position: relative;
+  min-height: 100vh;
+  padding: 0 0 6rem;
+  overflow: hidden;
+}
+
+/* ── Animated background canvas ── */
+#bgCanvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: .55;
+}
+
+/* Floating orbs */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  z-index: 0;
+  pointer-events: none;
+  animation: orbDrift 12s ease-in-out infinite;
+}
+.orb-1 { width:420px; height:420px; background:rgba(124,58,237,.18); top:-80px; left:-120px; animation-duration:14s; }
+.orb-2 { width:300px; height:300px; background:rgba(212,169,74,.12); bottom:10%; right:-80px; animation-duration:10s; animation-delay:-5s; }
+.orb-3 { width:200px; height:200px; background:rgba(236,72,153,.12); top:55%; left:35%; animation-duration:16s; animation-delay:-8s; }
+@keyframes orbDrift {
+  0%,100% { transform: translate(0,0) scale(1); }
+  33%      { transform: translate(30px,-20px) scale(1.08); }
+  66%      { transform: translate(-20px,30px) scale(.95); }
+}
+
+/* ── Everything above canvas ── */
+.result-inner { position: relative; z-index: 2; }
+
+/* ── Decorative golden divider ── */
+.gold-divider {
+  display: flex; align-items: center; gap: 1.2rem;
+  margin: 2.5rem 0;
+}
+.gold-divider::before, .gold-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+.gold-divider i { color: var(--gold); font-size: 1rem; animation: spinSlow 8s linear infinite; }
+@keyframes spinSlow { to { transform: rotate(360deg); } }
+
+/* ── Hero banner ── */
+.result-hero {
+  text-align: center;
+  padding: 4rem 1rem 2rem;
+}
+
+.result-badge-classic {
+  display: inline-flex; align-items: center; gap: .6rem;
+  border: 1px solid var(--gold-dark);
+  background: rgba(212,169,74,.1);
+  color: var(--gold-light);
+  border-radius: 2rem; padding: .4rem 1.2rem;
+  font-family: var(--display);
+  font-size: .72rem; letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: 1.4rem;
+  animation: fadeSlideDown .7s ease both;
+}
+.result-badge-classic i { animation: pulseGold 2s ease-in-out infinite; }
+@keyframes pulseGold {
+  0%,100% { color: var(--gold-light); text-shadow: none; }
+  50%      { color: #fff8dc; text-shadow: 0 0 12px var(--gold); }
+}
+
+.result-hero h1 {
+  font-family: var(--display);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: var(--cream);
+  animation: fadeSlideDown .8s .15s ease both;
+}
+.result-hero h1 .face-shape-name {
+  background: linear-gradient(135deg, var(--gold-light), var(--gold), var(--gold-dark));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-style: italic;
+}
+.result-hero .subtitle {
+  font-family: var(--serif);
+  font-size: 1.1rem; font-style: italic;
+  color: rgba(245,240,232,.6);
+  margin-top: .75rem;
+  animation: fadeSlideDown .8s .3s ease both;
+}
+
+@keyframes fadeSlideDown {
+  from { opacity:0; transform: translateY(-24px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+@keyframes fadeSlideUp {
+  from { opacity:0; transform: translateY(30px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+/* ── Overview row ── */
+.result-overview {
+  display: flex; gap: 2.5rem;
+  align-items: flex-start; flex-wrap: wrap;
+  margin-bottom: 3rem;
+  animation: fadeSlideUp .9s .4s ease both;
+}
+
+/* Photo card */
+.result-photo-card {
+  position: relative; flex-shrink: 0;
+}
+.photo-frame {
+  position: relative;
+  border-radius: 1.2rem;
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: linear-gradient(var(--bg-deep), var(--bg-deep)) padding-box,
+              linear-gradient(135deg, var(--gold), var(--gold-dark), var(--gold)) border-box;
+  box-shadow: 0 8px 40px rgba(212,169,74,.25), 0 0 0 6px rgba(212,169,74,.07);
+}
+.photo-frame::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 60%, rgba(9,9,26,.85));
+  z-index: 1;
+}
+.result-image {
+  width: 230px; height: 280px;
+  object-fit: cover; display: block;
+}
+.photo-labels {
+  position: absolute; bottom: .8rem; left: .8rem; right: .8rem;
+  display: flex; gap: .5rem; flex-wrap: wrap;
+  z-index: 2;
+}
+.photo-label {
+  display: inline-flex; align-items: center; gap: .4rem;
+  background: rgba(9,9,26,.8); backdrop-filter: blur(12px);
+  border: 1px solid rgba(212,169,74,.3);
+  color: var(--gold-light); border-radius: .5rem;
+  padding: .3rem .7rem; font-size: .72rem; font-weight: 600;
+  font-family: var(--display); letter-spacing: .06em;
+}
+
+/* Shimmer scan line */
+.scan-line {
+  position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(212,169,74,.15), transparent);
+  z-index: 3;
+  animation: scanAnim 3.5s ease-in-out infinite 1.2s;
+}
+@keyframes scanAnim {
+  0%   { left: -60%; }
+  100% { left: 140%; }
+}
+
+/* Corner ornaments */
+.corner {
+  position: absolute; width: 18px; height: 18px;
+  border-color: var(--gold); border-style: solid;
+  z-index: 4;
+}
+.corner-tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; border-radius: 4px 0 0 0; }
+.corner-tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; border-radius: 0 4px 0 0; }
+.corner-bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; border-radius: 0 0 0 4px; }
+.corner-br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; border-radius: 0 0 4px 0; }
+
+/* ── Info card ── */
+.result-info { flex: 1; min-width: 280px; }
+
+.classic-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 1.2rem;
+  padding: 1.8rem;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .3s, box-shadow .3s;
+}
+.classic-card:hover {
+  border-color: rgba(212,169,74,.4);
+  box-shadow: 0 0 30px rgba(212,169,74,.1);
+}
+.classic-card::after {
+  content: '';
+  position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.03), transparent);
+  transition: left .6s ease;
+}
+.classic-card:hover::after { left: 150%; }
+
+.classic-card-title {
+  font-family: var(--display);
+  font-size: .78rem; letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--gold);
+  display: flex; align-items: center; gap: .6rem;
+  margin-bottom: 1rem;
+}
+.classic-card-title::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, var(--gold-dark), transparent);
+}
+
+.face-shape-desc {
+  font-family: var(--serif);
+  font-size: 1.05rem; font-style: italic;
+  color: rgba(245,240,232,.75);
+  line-height: 1.8;
+  margin-bottom: 1.5rem;
+}
+
+/* ── Measurement grid ── */
+.measurements-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: .75rem;
+}
+.measurement {
+  background: rgba(212,169,74,.06);
+  border: 1px solid rgba(212,169,74,.15);
+  border-radius: .6rem; padding: .85rem;
+  text-align: center;
+  transition: background .3s, border-color .3s;
+}
+.measurement:hover {
+  background: rgba(212,169,74,.12);
+  border-color: rgba(212,169,74,.35);
+}
+.m-label {
+  display: block; font-size: .67rem;
+  text-transform: uppercase; letter-spacing: .1em;
+  color: var(--gold-dark); margin-bottom: .3rem;
+  font-family: var(--display);
+}
+.m-value {
+  display: block; font-size: 1.1rem;
+  font-weight: 700; color: var(--gold-light);
+  font-family: var(--display);
+}
+
+/* ── Recommendations section ── */
+.rec-section { margin-bottom: 4rem; }
+
+.rec-banner {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap; gap: 1rem;
+  margin-bottom: 2rem;
+}
+.rec-title-wrap {
+  display: flex; align-items: center; gap: .8rem;
+}
+.rec-icon-ring {
+  width: 46px; height: 46px; border-radius: 50%;
+  border: 1.5px solid var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold); font-size: 1.1rem;
+  animation: ringPulse 3s ease-in-out infinite;
+  position: relative;
+}
+.rec-icon-ring::before {
+  content: '';
+  position: absolute; inset: -6px;
+  border-radius: 50%;
+  border: 1px solid rgba(212,169,74,.2);
+  animation: ringPulse 3s ease-in-out infinite .5s;
+}
+@keyframes ringPulse {
+  0%,100% { box-shadow: 0 0 0 0 var(--gold-glow); }
+  50%      { box-shadow: 0 0 0 8px transparent; }
+}
+
+.rec-title {
+  font-family: var(--display);
+  font-size: clamp(1.2rem, 3vw, 1.6rem);
+  font-weight: 700; letter-spacing: .05em;
+  color: var(--cream);
+}
+.rec-count-badge {
+  background: rgba(212,169,74,.15);
+  border: 1px solid rgba(212,169,74,.35);
+  color: var(--gold-light);
+  border-radius: 2rem; padding: .3rem 1rem;
+  font-size: .78rem; font-weight: 700;
+  font-family: var(--display); letter-spacing: .08em;
+}
+
+/* ── Style card grid ── */
+.styles-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.1rem;
+}
+@media (max-width: 900px) { .styles-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 560px) { .styles-grid { grid-template-columns: 1fr; } }
+
+/* Card base — animated in via JS */
+.style-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+  padding: 1.2rem;
+  display: flex; align-items: flex-start; gap: 1rem;
+  position: relative; overflow: hidden;
+  cursor: default;
+  opacity: 0; transform: translateY(28px) scale(.97);
+  transition: 
+    opacity .5s ease,
+    transform .5s ease,
+    border-color .3s,
+    box-shadow .3s,
+    background .3s;
+}
+
+/* ── Try Now Button ── */
+.try-now-btn {
+  display: inline-flex; align-items: center; gap: .45rem;
+  margin-top: .75rem;
+  padding: .38rem .95rem;
+  border-radius: 2rem;
+  font-family: var(--display);
+  font-size: .72rem; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  cursor: pointer; border: none; outline: none;
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+  color: #09091a;
+  box-shadow: 0 3px 14px rgba(212,169,74,.35);
+  transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
+  position: relative; overflow: hidden;
+  z-index: 1;
+}
+.try-now-btn i { font-size: .7rem; }
+.try-now-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(212,169,74,.55);
+}
+.try-now-btn:active { transform: translateY(0); }
+
+/* beard variant */
+.beard-card .try-now-btn {
+  background: linear-gradient(135deg, #4f46e5, #818cf8);
+  color: #fff;
+  box-shadow: 0 3px 14px rgba(99,102,241,.35);
+}
+.beard-card .try-now-btn:hover {
+  box-shadow: 0 6px 22px rgba(99,102,241,.55);
+}
+.style-card.visible {
+  opacity: 1; transform: translateY(0) scale(1);
+}
+.style-card:hover {
+  border-color: rgba(212,169,74,.5);
+  background: rgba(212,169,74,.06);
+  box-shadow: 0 8px 32px rgba(212,169,74,.12), inset 0 1px 0 rgba(212,169,74,.2);
+  transform: translateY(-4px) scale(1.01) !important;
+}
+
+/* Shimmer sweep on hover */
+.style-card::before {
+  content: '';
+  position: absolute; top: 0; left: -120%; width: 70%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(212,169,74,.08), transparent);
+  transition: left .5s ease;
+}
+.style-card:hover::before { left: 140%; }
+
+/* Ghost index number */
+.style-card-num {
+  position: absolute; bottom: .4rem; right: .9rem;
+  font-family: var(--display);
+  font-size: 3.2rem; font-weight: 900;
+  color: rgba(212,169,74,.06);
+  line-height: 1; pointer-events: none;
+  transition: color .3s;
+}
+.style-card:hover .style-card-num { color: rgba(212,169,74,.13); }
+
+/* Icon */
+.style-card-icon {
+  width: 46px; height: 46px; flex-shrink: 0;
+  border-radius: .6rem;
+  background: linear-gradient(135deg, rgba(212,169,74,.25), rgba(212,169,74,.08));
+  border: 1px solid rgba(212,169,74,.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.05rem; color: var(--gold-light);
+  transition: background .3s, transform .3s, box-shadow .3s;
+  position: relative; overflow: hidden;
+}
+.style-card:hover .style-card-icon {
+  background: linear-gradient(135deg, rgba(212,169,74,.45), rgba(212,169,74,.2));
+  transform: rotate(-6deg) scale(1.1);
+  box-shadow: 0 4px 16px rgba(212,169,74,.3);
+}
+/* Ripple on card icon */
+.style-card-icon::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  background: rgba(212,169,74,.35);
+  transform: scale(0);
+  opacity: 0;
+  transition: transform .4s ease, opacity .4s ease;
+}
+.style-card:hover .style-card-icon::after {
+  transform: scale(2.2); opacity: 0;
+}
+
+/* Beard icon distinct colour */
+.beard-card .style-card-icon {
+  background: linear-gradient(135deg, rgba(99,102,241,.25), rgba(99,102,241,.08));
+  border-color: rgba(99,102,241,.3);
+  color: #a5b4fc;
+}
+.beard-card:hover .style-card-icon {
+  background: linear-gradient(135deg, rgba(99,102,241,.45), rgba(99,102,241,.2));
+  box-shadow: 0 4px 16px rgba(99,102,241,.3);
+}
+
+.style-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.style-card-body h4 {
+  font-family: var(--display);
+  font-size: .95rem; font-weight: 600;
+  letter-spacing: .03em;
+  color: var(--cream); margin-bottom: .35rem;
+  transition: color .3s;
+}
+.style-card:hover .style-card-body h4 { color: var(--gold-light); }
+.style-card-body p {
+  font-family: var(--serif);
+  font-size: .9rem; font-style: italic;
+  color: rgba(245,240,232,.55);
+  line-height: 1.6; margin: 0;
+}
+
+/* ── Action buttons row ── */
+.result-actions {
+  display: flex; flex-wrap: wrap; gap: 1rem;
+  justify-content: center; margin-top: 3rem;
+  animation: fadeSlideUp 1s .8s ease both;
+}
+
+/* Classic ripple button override */
+.btn-classic {
+  position: relative; overflow: hidden;
+  font-family: var(--display);
+  letter-spacing: .08em; text-transform: uppercase;
+  font-size: .82rem;
+}
+.btn-classic-primary {
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold), var(--gold-dark)) !important;
+  background-size: 200% !important;
+  background-position: left !important;
+  color: #09091a !important;
+  border: none;
+  font-weight: 700;
+  box-shadow: 0 4px 20px rgba(212,169,74,.4) !important;
+  animation: goldShimmerBtn 3s ease infinite;
+}
+@keyframes goldShimmerBtn {
+  0%,100% { background-position: left; }
+  50%      { background-position: right; }
+}
+.btn-classic-primary:hover {
+  box-shadow: 0 8px 32px rgba(212,169,74,.65) !important;
+  transform: translateY(-3px) !important;
+  color: #09091a !important;
+}
+.btn-classic-outline {
+  border: 1.5px solid rgba(212,169,74,.45) !important;
+  color: var(--gold-light) !important;
+  background: transparent !important;
+}
+.btn-classic-outline:hover {
+  border-color: var(--gold) !important;
+  background: rgba(212,169,74,.1) !important;
+  color: var(--gold-light) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Ripple effect */
+.ripple-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,.35);
+  transform: scale(0);
+  animation: rippleAnim .6s linear;
+  pointer-events: none;
+}
+@keyframes rippleAnim {
+  to { transform: scale(4); opacity: 0; }
+}
+
+/* ── Scroll progress bar ── */
+.scroll-progress {
+  position: fixed; top: 70px; left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--gold-dark), var(--gold-light), var(--gold-dark));
+  background-size: 200%;
+  z-index: 1001;
+  width: 0%;
+  transition: width .05s linear;
+  animation: progressShimmer 2s linear infinite;
+}
+@keyframes progressShimmer {
+  0%   { background-position: 0%; }
+  100% { background-position: 200%; }
+}
+
+/* ── Entrance counters ── */
+.m-value[data-target] { transition: none; }
+
+/* ── Responsive adjustments ── */
+@media (max-width: 760px) {
+  .result-overview { flex-direction: column; align-items: center; }
+  .photo-frame { width: 100%; max-width: 320px; }
+  .result-image { width: 100%; height: 240px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Scroll progress bar -->
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<!-- Animated background -->
+<canvas id="bgCanvas"></canvas>
+
+<!-- Floating colour orbs -->
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<section class="result-section">
+  <div class="result-inner container">
+
+    <!-- ── Hero Header ── -->
+    <div class="result-hero">
+      <div class="result-badge-classic">
+        <i class="fas fa-crown"></i>
+        Analysis Complete
+      </div>
+
+      <h1>
+        Your Face Shape:&nbsp;
+        <span class="face-shape-name">{{ face_shape | capitalize }}</span>
+      </h1>
+      <p class="subtitle">
+        Personalized style recommendations crafted for your
+        <em>{{ face_shape }}</em> face shape.
+      </p>
+    </div>
+
+    <!-- ── Gold Divider ── -->
+    <div class="gold-divider"><i class="fas fa-star-of-life"></i></div>
+
+    <!-- ── Overview Row ── -->
+    <div class="result-overview">
+
+      <!-- Photo -->
+      <div class="result-photo-card">
+        <div class="photo-frame" style="position:relative;">
+          <img src="{{ url_for('static', filename='uploads/' + image_filename) }}"
+               alt="Your photo" class="result-image">
+          <div class="scan-line"></div>
+          <div class="corner corner-tl"></div>
+          <div class="corner corner-tr"></div>
+          <div class="corner corner-bl"></div>
+          <div class="corner corner-br"></div>
+          <div class="photo-labels">
+            <span class="photo-label">
+              <i class="fas fa-user"></i> {{ face_shape | capitalize }} Face
+            </span>
+            <span class="photo-label">
+              <i class="fas fa-{{ 'mars' if gender == 'male' else 'venus' }}"></i>
+              {{ gender | capitalize }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info card -->
+      <div class="result-info">
+        <div class="classic-card">
+          <div class="classic-card-title">
+            <i class="fas fa-scroll"></i> About Your Face Shape
+          </div>
+          <p class="face-shape-desc">{{ recommendations.description }}</p>
+
+          {% if measurements %}
+          <div class="classic-card-title" style="margin-top:1.2rem;">
+            <i class="fas fa-ruler-combined"></i> Measurements
+          </div>
+          <div class="measurements-grid">
+            <div class="measurement">
+              <span class="m-label">Face Height</span>
+              <span class="m-value" data-target="{{ measurements.face_height }}">0</span>
+              <span style="font-size:.65rem;color:var(--gold-dark);">px</span>
+            </div>
+            <div class="measurement">
+              <span class="m-label">Cheek Width</span>
+              <span class="m-value" data-target="{{ measurements.cheek_width }}">0</span>
+              <span style="font-size:.65rem;color:var(--gold-dark);">px</span>
+            </div>
+            <div class="measurement">
+              <span class="m-label">Jaw Width</span>
+              <span class="m-value" data-target="{{ measurements.jaw_width }}">0</span>
+              <span style="font-size:.65rem;color:var(--gold-dark);">px</span>
+            </div>
+            <div class="measurement">
+              <span class="m-label">Forehead Width</span>
+              <span class="m-value" data-target="{{ measurements.forehead_width }}">0</span>
+              <span style="font-size:.65rem;color:var(--gold-dark);">px</span>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════
+         HAIRSTYLE RECOMMENDATIONS
+         ═══════════════════════════════════ -->
+    <div class="rec-section">
+      <div class="rec-banner">
+        <div class="rec-title-wrap">
+          <div class="rec-icon-ring"><i class="fas fa-cut"></i></div>
+          <h2 class="rec-title">Recommended Hairstyles</h2>
+        </div>
+        <span class="rec-count-badge">{{ recommendations.hairstyles | length }} Options</span>
+      </div>
+
+      <div class="styles-grid" id="hairGrid">
+        {% for style in recommendations.hairstyles %}
+        <div class="style-card hairstyle-card" data-delay="{{ loop.index0 * 90 }}">
+          <div class="style-card-icon"><i class="fas fa-cut"></i></div>
+          <div class="style-card-body">
+            <h4>{{ style.name }}</h4>
+            <p>{{ style.description }}</p>
+            <button class="try-now-btn ripple-btn"
+                    data-style="{{ style.name }}"
+                    data-type="hairstyle"
+                    onclick="handleTryNow(this)">
+              <i class="fas fa-magic"></i> Try Now
+            </button>
+          </div>
+          <div class="style-card-num">{{ loop.index }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Gold divider -->
+    {% if gender == 'male' and recommendations.beard_styles %}
+    <div class="gold-divider"><i class="fas fa-gem"></i></div>
+
+    <!-- ═══════════════════════════════════
+         BEARD RECOMMENDATIONS
+         ═══════════════════════════════════ -->
+    <div class="rec-section">
+      <div class="rec-banner">
+        <div class="rec-title-wrap">
+          <div class="rec-icon-ring" style="border-color:#818cf8;color:#818cf8;">
+            <i class="fas fa-user-tie"></i>
+          </div>
+          <h2 class="rec-title">Recommended Beard Styles</h2>
+        </div>
+        <span class="rec-count-badge">{{ recommendations.beard_styles | length }} Options</span>
+      </div>
+
+      <div class="styles-grid" id="beardGrid">
+        {% for style in recommendations.beard_styles %}
+        <div class="style-card beard-card" data-delay="{{ loop.index0 * 90 }}">
+          <div class="style-card-icon"><i class="fas fa-user-tie"></i></div>
+          <div class="style-card-body">
+            <h4>{{ style.name }}</h4>
+            <p>{{ style.description }}</p>
+            <button class="try-now-btn ripple-btn"
+                    data-style="{{ style.name }}"
+                    data-type="beard"
+                    onclick="handleTryNow(this)">
+              <i class="fas fa-magic"></i> Try Now
+            </button>
+          </div>
+          <div class="style-card-num">{{ loop.index }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ── Gold Divider ── -->
+    <div class="gold-divider"><i class="fas fa-feather-alt"></i></div>
+
+    <!-- ── Action Buttons ── -->
+    <div class="result-actions">
+      <a href="{{ url_for('analysis.analyze') }}"
+         class="btn btn-large btn-classic btn-classic-primary ripple-btn">
+        <i class="fas fa-camera"></i> Analyze Another Photo
+      </a>
+      <a href="{{ url_for('analysis.history') }}"
+         class="btn btn-large btn-classic btn-classic-outline ripple-btn">
+        <i class="fas fa-history"></i> View History
+      </a>
+      <a href="{{ url_for('main.dashboard') }}"
+         class="btn btn-large btn-classic btn-classic-outline ripple-btn">
+        <i class="fas fa-home"></i> Dashboard
+      </a>
+    </div>
+
+  </div><!-- /container -->
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ═══════════════════════════════════
+   1. PARTICLE / STAR CANVAS
+   ═══════════════════════════════════ */
+(function(){
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+
+  function resize(){ W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const GOLD = 'rgba(212,169,74,';
+  const PURPLE = 'rgba(124,58,237,';
+
+  function rand(a, b){ return Math.random()*(b-a)+a; }
+
+  class Particle {
+    constructor(){
+      this.reset();
+    }
+    reset(){
+      this.x = rand(0, W);
+      this.y = rand(0, H);
+      this.r = rand(.5, 2.2);
+      this.alpha = rand(.1, .6);
+      this.speed = rand(.1, .4);
+      this.drift = rand(-.3, .3);
+      this.color = Math.random() > .6 ? GOLD : PURPLE;
+      this.twinkleSpeed = rand(.005, .02);
+      this.twinkleDir = 1;
+    }
+    update(){
+      this.y -= this.speed;
+      this.x += this.drift;
+      this.alpha += this.twinkleSpeed * this.twinkleDir;
+      if(this.alpha > .7 || this.alpha < .05) this.twinkleDir *= -1;
+      if(this.y < -5) this.reset(), this.y = H + 5;
+    }
+    draw(){
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+      ctx.fillStyle = this.color + this.alpha + ')';
+      ctx.fill();
+    }
+  }
+
+  for(let i = 0; i < 120; i++) particles.push(new Particle());
+
+  function loop(){
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach(p => { p.update(); p.draw(); });
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
+/* ═══════════════════════════════════
+   2. SCROLL PROGRESS BAR
+   ═══════════════════════════════════ */
+window.addEventListener('scroll', () => {
+  const el = document.getElementById('scrollProgress');
+  const pct = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+  el.style.width = Math.min(pct, 100) + '%';
+});
+
+/* ═══════════════════════════════════
+   3. INTERSECTION OBSERVER — staggered card entrance
+   ═══════════════════════════════════ */
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting){
+      const delay = parseInt(entry.target.dataset.delay || 0);
+      setTimeout(() => {
+        entry.target.classList.add('visible');
+      }, delay);
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.08 });
+
+document.querySelectorAll('.style-card').forEach(c => observer.observe(c));
+
+/* ═══════════════════════════════════
+   4. COUNTER ANIMATION for measurements
+   ═══════════════════════════════════ */
+function animateCounter(el, target, duration){
+  const step = target / (duration / 16);
+  let current = 0;
+  const tick = () => {
+    current = Math.min(current + step, target);
+    el.textContent = Math.round(current);
+    if(current < target) requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+const counterObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting){
+      const el = entry.target;
+      const target = parseInt(el.dataset.target);
+      if(!isNaN(target)) animateCounter(el, target, 1200);
+      counterObserver.unobserve(el);
+    }
+  });
+}, { threshold: 0.5 });
+
+document.querySelectorAll('.m-value[data-target]').forEach(el => counterObserver.observe(el));
+
+/* ═══════════════════════════════════
+   5. RIPPLE EFFECT on buttons
+   ═══════════════════════════════════ */
+document.querySelectorAll('.ripple-btn').forEach(btn => {
+  btn.addEventListener('click', function(e){
+    const rect = this.getBoundingClientRect();
+    const circle = document.createElement('span');
+    const size = Math.max(rect.width, rect.height);
+    circle.className = 'ripple-circle';
+    circle.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${e.clientX - rect.left - size/2}px;
+      top:${e.clientY - rect.top - size/2}px;
+    `;
+    this.appendChild(circle);
+    setTimeout(() => circle.remove(), 700);
+  });
+});
+
+/* ═══════════════════════════════════
+   6. TRY NOW handler
+   ═══════════════════════════════════ */
+function handleTryNow(btn) {
+  const styleName  = btn.dataset.style;
+  const styleType  = btn.dataset.type;
+  // Save current page URL so Close always knows where to come back
+  sessionStorage.setItem('arReturnUrl', window.location.href);
+  const returnUrl  = encodeURIComponent(window.location.href);
+  const tryOnUrl   = `/try-on?style=${encodeURIComponent(styleName)}&type=${encodeURIComponent(styleType)}&returnUrl=${returnUrl}`;
+  window.location.href = tryOnUrl;
+}
+
+/* ═══════════════════════════════════
+   7. TILT EFFECT on cards (subtle)
+   ═══════════════════════════════════ */
+document.querySelectorAll('.style-card').forEach(card => {
+  card.addEventListener('mousemove', function(e){
+    const rect = this.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width/2;
+    const y = e.clientY - rect.top - rect.height/2;
+    const tiltX = -(y / rect.height) * 6;
+    const tiltY = (x / rect.width) * 6;
+    this.style.transform = `translateY(-4px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(1.01)`;
+  });
+  card.addEventListener('mouseleave', function(){
+    this.style.transform = '';
+  });
+});
+</script>
+{% endblock %}

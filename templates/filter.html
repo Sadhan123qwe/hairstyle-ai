@@ -1,0 +1,843 @@
+{% extends "base.html" %}
+
+{% block title %}AR Try-On — HairStyleAI{% endblock %}
+
+{% block extra_css %}
+<style>
+:root {
+  --gold:#d4a94a; --gold-light:#f0c96a; --gold-dark:#a07830;
+  --bg-deep:#09091a; --glass:rgba(255,255,255,.04);
+  --glass-border:rgba(255,255,255,.08); --cream:#f5f0e8;
+  --display:'Cinzel',serif; --serif:'EB Garamond',serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#000;overflow:hidden}
+
+#ar-wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000}
+#webcam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:none}
+#arCanvas{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1)}
+
+#loader{position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.2rem;background:linear-gradient(135deg,#09091a,#150d2e)}
+.loader-ring{width:72px;height:72px;border-radius:50%;border:3px solid rgba(212,169,74,.15);border-top-color:var(--gold);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loader p{font-family:var(--display);font-size:.85rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-light)}
+
+#permDenied{position:absolute;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1rem;text-align:center;padding:2rem;background:linear-gradient(135deg,#09091a,#150d2e)}
+#permDenied i{font-size:3rem;color:#f87171}
+#permDenied h2{font-family:var(--display);color:var(--cream);font-size:1.4rem}
+#permDenied p{color:rgba(245,240,232,.6);font-family:var(--serif);line-height:1.7;max-width:380px}
+.btn-retry{margin-top:.5rem;padding:.6rem 1.6rem;border-radius:2rem;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#09091a;font-family:var(--display);font-weight:700;font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;border:none;cursor:pointer}
+
+/* HUD */
+#styleHud{position:absolute;top:1.2rem;left:1.2rem;z-index:30;background:rgba(9,9,26,.75);backdrop-filter:blur(16px);border:1px solid var(--glass-border);border-radius:1rem;padding:.9rem 1.3rem;min-width:200px;animation:fadeIn .5s ease both}
+.hud-badge{display:inline-flex;align-items:center;gap:.4rem;font-family:var(--display);font-size:.64rem;letter-spacing:.13em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem}
+.hud-name{font-family:var(--display);font-size:1.05rem;font-weight:700;color:var(--cream);letter-spacing:.04em}
+.hud-tip{margin-top:.4rem;font-family:var(--serif);font-size:.82rem;font-style:italic;color:rgba(245,240,232,.5)}
+
+#faceStatus{position:absolute;top:1.2rem;right:1.2rem;z-index:30;background:rgba(9,9,26,.75);backdrop-filter:blur(16px);border:1px solid var(--glass-border);border-radius:2rem;padding:.5rem 1.1rem;display:flex;align-items:center;gap:.5rem;font-family:var(--display);font-size:.72rem;letter-spacing:.08em;color:rgba(245,240,232,.6);animation:fadeIn .5s .2s ease both}
+#statusDot{width:8px;height:8px;border-radius:50%;background:#f87171;transition:background .3s}
+#statusDot.on{background:#4ade80;box-shadow:0 0 8px #4ade80}
+
+/* Bottom bar */
+#bottomBar{position:absolute;bottom:2rem;left:50%;z-index:30;transform:translateX(-50%);display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;justify-content:center;animation:fadeSlideUp .6s .3s ease both}
+@keyframes fadeSlideUp{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+.bar-btn{display:inline-flex;align-items:center;gap:.5rem;padding:.62rem 1.35rem;border-radius:2rem;font-family:var(--display);font-size:.76rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;cursor:pointer;border:none;outline:none;transition:transform .2s,box-shadow .2s,opacity .2s}
+.bar-btn:hover{transform:translateY(-2px)}
+.bar-btn:active{transform:translateY(0)}
+.bar-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-capture{background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#09091a;box-shadow:0 4px 20px rgba(212,169,74,.4)}
+.btn-capture:hover{box-shadow:0 8px 28px rgba(212,169,74,.6)}
+.btn-ai{background:linear-gradient(135deg,#4f46e5,#818cf8);color:#fff;box-shadow:0 4px 20px rgba(99,102,241,.4)}
+.btn-ai:hover{box-shadow:0 8px 28px rgba(99,102,241,.6)}
+.btn-close{background:rgba(255,255,255,.07);border:1px solid var(--glass-border);color:var(--cream)}
+.btn-close:hover{background:rgba(255,255,255,.13)}
+
+.hint-bar{position:absolute;bottom:6.5rem;left:50%;z-index:30;transform:translateX(-50%);background:rgba(9,9,26,.7);backdrop-filter:blur(10px);border:1px solid var(--glass-border);border-radius:2rem;padding:.4rem 1.2rem;font-family:var(--display);font-size:.67rem;letter-spacing:.1em;color:rgba(245,240,232,.45);text-transform:uppercase;white-space:nowrap;animation:fadeIn 1s 2s ease both,fadeOut 1s 6s ease forwards}
+@keyframes fadeOut{to{opacity:0;pointer-events:none}}
+
+.ar-corner{position:absolute;width:28px;height:28px;border-color:rgba(212,169,74,.45);border-style:solid;z-index:20}
+.ar-corner-tl{top:1.4rem;left:1.4rem;border-width:2px 0 0 2px;border-radius:4px 0 0 0}
+.ar-corner-tr{top:1.4rem;right:1.4rem;border-width:2px 2px 0 0;border-radius:0 4px 0 0}
+.ar-corner-bl{bottom:1.4rem;left:1.4rem;border-width:0 0 2px 2px;border-radius:0 0 0 4px}
+.ar-corner-br{bottom:1.4rem;right:1.4rem;border-width:0 2px 2px 0;border-radius:0 0 4px 0}
+
+/* ── AI Result Modal ── */
+#aiModal{
+  position:fixed;inset:0;z-index:100;
+  background:rgba(0,0,0,.88);
+  backdrop-filter:blur(12px);
+  display:none;align-items:center;justify-content:center;flex-direction:column;gap:1.2rem;
+  animation:fadeIn .3s ease;
+}
+#aiModal.show{display:flex}
+.ai-modal-card{
+  background:rgba(9,9,26,.95);
+  border:1px solid var(--glass-border);
+  border-radius:1.4rem;
+  padding:1.4rem;
+  max-width:min(96vw,720px);
+  width:100%;
+  display:flex;flex-direction:column;align-items:center;gap:1rem;
+}
+.ai-modal-title{
+  font-family:var(--display);font-size:.78rem;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--gold);display:flex;align-items:center;gap:.5rem;
+}
+/* Before / After layout */
+.ai-comparison{
+  display:none;
+  width:100%;gap:.75rem;
+  flex-direction:row;
+}
+.ai-comp-col{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:.4rem;
+  min-width:0;
+}
+.ai-comp-label{
+  font-family:var(--display);font-size:.60rem;letter-spacing:.13em;
+  text-transform:uppercase;color:rgba(245,240,232,.5);
+}
+.ai-comp-label.after{ color:var(--gold-light); }
+.ai-comp-col img{
+  width:100%;max-height:52vh;object-fit:contain;border-radius:.7rem;
+  border:1px solid rgba(212,169,74,.2);
+}
+.ai-comp-col img.after-img{ border-color:rgba(212,169,74,.55); }
+.ai-modal-spinner{
+  width:52px;height:52px;border-radius:50%;
+  border:3px solid rgba(99,102,241,.2);
+  border-top-color:#818cf8;
+  animation:spin 1s linear infinite;
+}
+.ai-modal-msg{
+  font-family:var(--serif);font-size:.95rem;font-style:italic;
+  color:rgba(245,240,232,.65);text-align:center;
+}
+.ai-modal-btns{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center}
+.btn-dl{
+  display:inline-flex;align-items:center;gap:.4rem;
+  padding:.55rem 1.2rem;border-radius:2rem;
+  background:linear-gradient(135deg,var(--gold-dark),var(--gold));
+  color:#09091a;font-family:var(--display);font-size:.74rem;
+  font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  border:none;cursor:pointer;text-decoration:none;
+  transition:transform .2s,box-shadow .2s;display:none;
+}
+.btn-dl:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(212,169,74,.5)}
+.btn-modal-close{
+  display:inline-flex;align-items:center;gap:.4rem;
+  padding:.55rem 1.2rem;border-radius:2rem;
+  background:rgba(255,255,255,.07);border:1px solid var(--glass-border);
+  color:var(--cream);font-family:var(--display);font-size:.74rem;
+  font-weight:700;letter-spacing:.09em;text-transform:uppercase;cursor:pointer;
+  transition:background .2s;
+}
+.btn-modal-close:hover{background:rgba(255,255,255,.14)}
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="ar-wrap">
+  <video id="webcam" autoplay playsinline muted></video>
+  <canvas id="arCanvas"></canvas>
+
+  <div id="loader">
+    <div class="loader-ring"></div>
+    <p id="loaderText">Initialising camera…</p>
+  </div>
+
+  <div id="permDenied">
+    <i class="fas fa-camera-slash"></i>
+    <h2>Camera Access Required</h2>
+    <p>Please allow camera access in your browser settings and try again.</p>
+    <button class="btn-retry" onclick="startCamera()"><i class="fas fa-redo"></i> Try Again</button>
+  </div>
+
+  <div id="styleHud">
+    <div class="hud-badge"><i class="fas fa-magic"></i><span id="hudType">Hairstyle</span></div>
+    <div class="hud-name" id="hudName">Loading…</div>
+    <div class="hud-tip">Position your face in the frame</div>
+  </div>
+
+  <div id="faceStatus">
+    <div id="statusDot"></div>
+    <span id="statusText">Looking for face…</span>
+  </div>
+
+  <div class="ar-corner ar-corner-tl"></div>
+  <div class="ar-corner ar-corner-tr"></div>
+  <div class="ar-corner ar-corner-bl"></div>
+  <div class="ar-corner ar-corner-br"></div>
+
+  <div class="hint-bar">Keep your face centred &nbsp;·&nbsp; Click ✨ AI Try-On for realistic result</div>
+
+  <div id="bottomBar">
+    <button class="bar-btn btn-capture" onclick="capturePhoto()"><i class="fas fa-camera"></i> Capture</button>
+    <button class="bar-btn btn-ai"      id="aiBtn" onclick="doAITryOn()"><i class="fas fa-wand-magic-sparkles"></i> AI Try-On</button>
+  </div>
+</div>
+
+<!-- AI Result Modal -->
+<div id="aiModal">
+  <div class="ai-modal-card">
+    <div class="ai-modal-title"><i class="fas fa-sparkles"></i> AI Try-On Result — <span id="aiModalStyle"></span></div>
+    <div class="ai-modal-spinner" id="aiSpinner"></div>
+    <p class="ai-modal-msg" id="aiModalMsg">Generating your realistic style preview…<br><em>This takes 3–8 seconds</em></p>
+    <!-- Before / After comparison -->
+    <div class="ai-comparison" id="aiComparison">
+      <div class="ai-comp-col">
+        <span class="ai-comp-label">Before</span>
+        <img id="beforeImg" alt="Before">
+      </div>
+      <div class="ai-comp-col">
+        <span class="ai-comp-label after">After</span>
+        <img id="aiResultImg" class="after-img" alt="AI Try-On Result">
+      </div>
+    </div>
+    <div class="ai-modal-btns">
+      <a id="aiDlBtn" class="btn-dl" download><i class="fas fa-download"></i> Download</a>
+      <button class="btn-modal-close" onclick="closeAIModal()"><i class="fas fa-times"></i> Close</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   HairStyleAI  AR Filter  v5  — Shape Overlay + AI Mode
+   ───────────────────────────────────────────────────────
+   LIVE MODE:  Solid filled silhouette overlay (no barcode
+               strokes) positioned by face mesh landmarks.
+               Uses multiply blend + edge feather on an
+               offscreen canvas so webcam feed is intact.
+   AI MODE:    "✨ AI Try-On" button → capture frame →
+               POST to /api/ar-snapshot → show realistic
+               photo in a modal (uses server-side OpenCV
+               renderer / Replicate AI).
+   ═══════════════════════════════════════════════════════ */
+
+const params = new URLSearchParams(window.location.search);
+const STYLE  = decodeURIComponent(params.get('style') || 'Default');
+const TYPE   = decodeURIComponent(params.get('type')  || 'hairstyle');
+
+document.getElementById('hudName').textContent   = STYLE;
+document.getElementById('hudType').textContent   = TYPE === 'beard' ? 'Beard Style' : 'Hairstyle';
+document.getElementById('aiModalStyle').textContent = STYLE;
+
+const video     = document.getElementById('webcam');
+const canvas    = document.getElementById('arCanvas');
+const ctx       = canvas.getContext('2d');
+const loader    = document.getElementById('loader');
+const loaderTx  = document.getElementById('loaderText');
+const permDiv   = document.getElementById('permDenied');
+const statusDot = document.getElementById('statusDot');
+const statusTx  = document.getElementById('statusText');
+let faceDetected = false;
+let lastLandmarks = null;
+
+/* Offscreen canvas for beard compositing */
+const off  = document.createElement('canvas');
+const octx = off.getContext('2d');
+
+function resize(){
+  canvas.width = off.width  = window.innerWidth;
+  canvas.height = off.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+/* ── Landmark to canvas px ── */
+function lm(L, i){ return { x: L[i].x * canvas.width, y: L[i].y * canvas.height }; }
+
+/* ── Clip-path helper ── */
+function clipPoly(c, pts){
+  c.beginPath();
+  c.moveTo(pts[0].x, pts[0].y);
+  for(let i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y);
+  c.closePath();
+}
+
+/* ════════════════════════════════════════════════════
+   HAIR OVERLAY  — solid silhouette with texture & depth
+   ════════════════════════════════════════════════════ */
+function drawHair(L, style){
+  const top   = lm(L,10);
+  const tL    = lm(L,234);
+  const tR    = lm(L,454);
+  const chin  = lm(L,152);
+
+  const W    = tR.x - tL.x;
+  const cX   = (tL.x + tR.x) / 2;
+  const scalpY = top.y - W * 0.04;
+
+  const cfg  = hairCfg(style, W);
+
+  /* ── Draw on offscreen canvas so we can feather edges safely ── */
+  octx.clearRect(0, 0, off.width, off.height);
+
+  const pts = hairPoly(style, cX, scalpY, tL, tR, chin, W, cfg);
+  if(!pts) return;
+
+  /* ── 1. Deep shadow base (bottom-most layer gives 3D depth) ── */
+  octx.save();
+  clipPoly(octx, pts);
+  const shadowGrd = octx.createLinearGradient(cX, scalpY - W*cfg.capH*1.1, cX, scalpY + W*cfg.lenFrac*1.05);
+  shadowGrd.addColorStop(0,    'rgba(2,1,0,0.92)');
+  shadowGrd.addColorStop(0.55, 'rgba(5,2,1,0.78)');
+  shadowGrd.addColorStop(1,    'rgba(10,5,2,0.20)');
+  octx.fillStyle = shadowGrd;
+  octx.fill();
+  octx.restore();
+
+  /* ── 2. Dense photorealistic strand field — clipped to silhouette ── */
+  octx.save();
+  clipPoly(octx, pts);
+  octx.clip();
+  octx.lineCap  = 'round';
+  octx.lineJoin = 'round';
+
+  const r = seededRng(strHash(style));
+
+  /* Render three layers: shadow strands → main strands → highlight strands */
+  const strandLayers = [
+    { count:120, alphaMin:0.55, alphaRange:0.30, widMin:1.2, widRange:1.2,
+      colorFn: () => { const v=Math.round(r()*14); return `rgb(${v},${Math.round(v*0.44)},${Math.round(v*0.16)})`; } },
+    { count:250, alphaMin:0.28, alphaRange:0.40, widMin:0.5, widRange:1.0,
+      colorFn: () => { const v=Math.round(8+r()*28); return `rgb(${v},${Math.round(v*0.48)},${Math.round(v*0.18)})`; } },
+    { count: 80, alphaMin:0.14, alphaRange:0.20, widMin:0.4, widRange:0.6,
+      colorFn: () => { const v=Math.round(40+r()*50); return `rgb(${v},${Math.round(v*0.52)},${Math.round(v*0.22)})`; } },
+  ];
+
+  for(const layer of strandLayers){
+    for(let i = 0; i < layer.count; i++){
+      /* Distribute root across the full span of the silhouette */
+      const ux    = r() * 2 - 1;
+      const rootX = cX + ux * W * cfg.span * (0.85 + r() * 0.20);
+      const rootY = scalpY - W * cfg.capH * (0.05 + r() * 0.90);
+
+      const ang   = cfg.angle(ux) + (r() - 0.5) * 0.35;
+      const len   = W * cfg.lenFrac * (0.25 + r() * 0.90);
+      const ex    = rootX + Math.sin(ang) * len;
+      const ey    = rootY + Math.cos(ang) * len;
+
+      /* Natural S-curve: two control points for richness */
+      const cpx1  = (rootX*0.65 + ex*0.35) + (r()-0.5) * W * 0.06;
+      const cpy1  = (rootY*0.65 + ey*0.35) + (r()-0.5) * W * 0.04;
+      const cpx2  = (rootX*0.30 + ex*0.70) + (r()-0.5) * W * 0.04;
+      const cpy2  = (rootY*0.30 + ey*0.70) + (r()-0.5) * W * 0.03;
+
+      octx.globalAlpha = layer.alphaMin + r() * layer.alphaRange;
+      octx.strokeStyle = layer.colorFn();
+      octx.lineWidth   = layer.widMin + r() * layer.widRange;
+      octx.beginPath();
+      octx.moveTo(rootX, rootY);
+      octx.bezierCurveTo(cpx1, cpy1, cpx2, cpy2, ex, ey);
+      octx.stroke();
+    }
+  }
+  octx.restore();
+
+  /* ── 3. Edge feathering — destination-in on offscreen only ── */
+  octx.save();
+  octx.globalCompositeOperation = 'destination-in';
+  clipPoly(octx, pts);
+  octx.clip();
+  const cx0 = cX, cy0 = scalpY + W * cfg.lenFrac * 0.35;
+  const fade = octx.createRadialGradient(cx0, cy0, W*0.08, cx0, cy0, Math.max(W, W*cfg.lenFrac)*0.85);
+  fade.addColorStop(0,    'rgba(0,0,0,1.00)');
+  fade.addColorStop(0.55, 'rgba(0,0,0,0.97)');
+  fade.addColorStop(0.78, 'rgba(0,0,0,0.60)');
+  fade.addColorStop(1.00, 'rgba(0,0,0,0.00)');
+  octx.fillStyle = fade;
+  octx.fillRect(0, 0, off.width, off.height);
+  octx.restore();
+
+  /* ── 4a. First blit: multiply (darkens existing skin naturally) ── */
+  ctx.save();
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.globalAlpha = 0.92;
+  ctx.drawImage(off, 0, 0);
+  ctx.restore();
+
+  /* ── 4b. Second blit: darken (makes real dark hair show through the overlay) ── */
+  ctx.save();
+  ctx.globalCompositeOperation = 'darken';
+  ctx.globalAlpha = 0.72;
+  ctx.drawImage(off, 0, 0);
+  ctx.restore();
+
+  /* ── 5. Specular shine stripe across crown ── */
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.globalAlpha = 0.14;
+  const shineG = ctx.createRadialGradient(
+    cX + W*0.06, scalpY - W*cfg.capH*0.40, 0,
+    cX + W*0.06, scalpY - W*cfg.capH*0.40, W*0.28
+  );
+  shineG.addColorStop(0,   'rgba(110,60,22,1)');
+  shineG.addColorStop(0.5, 'rgba(70,35,10,0.5)');
+  shineG.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = shineG;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+}
+
+/* Hair polygon per style */
+function hairPoly(style, cX, scalpY, tL, tR, chin, W, cfg){
+  const s = style.toLowerCase();
+  const top   = scalpY - W * cfg.capH;
+  const sideL = tL.x - W * cfg.span * 0.82;
+  const sideR = tR.x + W * cfg.span * 0.82;
+  const botY  = scalpY + W * cfg.lenFrac;
+
+  /* Default generous cap shape */
+  const cap = [
+    {x: sideL,        y: scalpY + W*0.06},
+    {x: cX - W*0.50,  y: top + W*cfg.capH*0.3},
+    {x: cX,           y: top},
+    {x: cX + W*0.50,  y: top + W*cfg.capH*0.3},
+    {x: sideR,        y: scalpY + W*0.06},
+  ];
+
+  if(cfg.sideHang){
+    /* Long/wavy styles grow down the sides */
+    return [
+      ...cap,
+      {x: sideR + W*0.04, y: botY * 0.6 + scalpY * 0.4},
+      {x: sideR,          y: botY},
+      {x: cX,             y: botY + W * 0.05},
+      {x: sideL,          y: botY},
+      {x: sideL - W*0.04, y: botY * 0.6 + scalpY * 0.4},
+    ];
+  }
+  return cap;
+}
+
+function hairCfg(style){
+  const D = {
+    capH:0.44, span:0.55, lenFrac:0.55, sideHang:false,
+    angle: u => u * 0.22
+  };
+  const M = {
+    'Buzz Cut':           {...D, capH:0.14, lenFrac:0.14, span:0.50, angle: u => u*0.04 },
+    'Crew Cut':           {...D, capH:0.20, lenFrac:0.25, span:0.52, angle: u => u*0.08 },
+    'Classic Undercut':   {...D, capH:0.28, lenFrac:0.32, span:0.52, angle: u => u*0.10 },
+    'Side Part':          {...D, capH:0.40, lenFrac:0.48, angle: u => u*0.75-0.28 },
+    'Deep Side Part':     {...D, capH:0.44, lenFrac:0.52, angle: u => u*0.88-0.40 },
+    'Slicked Back':       {...D, capH:0.38, lenFrac:0.45, angle: u => -0.04-Math.abs(u)*0.08 },
+    'Pompadour':          {...D, capH:0.72, lenFrac:0.58, angle: u => u*0.16-0.10 },
+    'Quiff':              {...D, capH:0.68, lenFrac:0.55, angle: u => u*0.18-0.12 },
+    'Short Textured':     {...D, capH:0.26, lenFrac:0.32, angle: u => u*0.38 },
+    'Wispy Fringe':       {...D, capH:0.34, lenFrac:0.40, angle: u => -u*0.55+(u<0?0.15:-0.15) },
+    'Side-Swept Bangs':   {...D, capH:0.40, lenFrac:0.48, angle: u => u*0.90-0.44 },
+    'Bob Cut':            {...D, capH:0.44, lenFrac:0.72, span:0.58, sideHang:true, angle: u => u*0.28 },
+    'Lob with Waves':     {...D, capH:0.48, lenFrac:1.10, span:0.58, sideHang:true, angle: u => u*0.42 },
+    'Long Layers':        {...D, capH:0.50, lenFrac:1.55, span:0.60, sideHang:true, angle: u => u*0.38 },
+    'Medium Length Shaggy':{...D, capH:0.50, lenFrac:1.00, sideHang:true, angle: u => u*0.45 },
+    'Textured Waves':     {...D, capH:0.46, lenFrac:0.88, sideHang:true, angle: u => u*0.50 },
+    'Dreadlocks':         {...D, capH:0.52, lenFrac:1.35, sideHang:true, angle: u => u*0.28 },
+    'Curly Afro':         {...D, capH:0.72, lenFrac:0.55, span:0.76, angle: u => u*0.85 },
+    'Mohawk':             {...D, capH:0.90, lenFrac:0.88, span:0.14, angle: _ => 0 },
+    'High Ponytail':      {...D, capH:0.52, lenFrac:0.32, span:0.48, angle: u => u*0.08 },
+    'Side Part Long Top': {...D, capH:0.55, lenFrac:0.80, angle: u => u*0.82-0.30 },
+  };
+  return M[style] ?? D;
+}
+
+/* ════════════════════════════════════════════════════
+   BEARD OVERLAY — solid polygon + texture + feathering
+   ════════════════════════════════════════════════════ */
+function drawBeard(L, style){
+  const chin   = lm(L,152);
+  const jawL   = lm(L,172);
+  const jawR   = lm(L,397);
+  const cheekL = lm(L,116);
+  const cheekR = lm(L,345);
+  const lipTop = lm(L,13);
+  const lipBot = lm(L,14);
+  const nose   = lm(L,4);
+  const W      = Math.abs(jawR.x - jawL.x);
+
+  const poly = beardPoly(style, {chin,jawL,jawR,cheekL,cheekR,lipTop,lipBot,W});
+
+  const bx = Math.min(...poly.map(p=>p.x)) - 6;
+  const by = Math.min(...poly.map(p=>p.y)) - 6;
+  const bw = Math.max(...poly.map(p=>p.x)) - bx + 12;
+  const bh = Math.max(...poly.map(p=>p.y)) - by + 12;
+
+  octx.clearRect(0, 0, off.width, off.height);
+
+  /* 1. Beard base fill */
+  octx.save();
+  clipPoly(octx, poly);
+  octx.clip();
+
+  const bg = octx.createRadialGradient(
+    chin.x, chin.y - W*0.08, W*0.03,
+    chin.x, chin.y - W*0.25, W*0.65
+  );
+  bg.addColorStop(0,    'rgba(14,7,3,0.95)');
+  bg.addColorStop(0.50, 'rgba(11,5,2,0.82)');
+  bg.addColorStop(0.85, 'rgba(7,3,1,0.50)');
+  bg.addColorStop(1.0,  'rgba(3,1,0,0.00)');
+  octx.fillStyle = bg;
+  octx.fillRect(bx, by, bw, bh);
+
+  /* 2. High-density curved fiber strokes */
+  octx.lineCap  = 'round';
+  const r = seededRng(strHash(style + 'beard'));
+  const isStubble = style.toLowerCase().includes('stubble');
+  const fiberCount = isStubble ? 2200 : 1600;
+
+  /* Layer 1 — deep shadow fibers */
+  for(let i = 0; i < Math.round(fiberCount * 0.35); i++){
+    const px  = bx + r() * bw;
+    const py  = by + r() * bh;
+    const lat = (px - chin.x) / (W * 0.55);
+    const ang = Math.PI*0.50 + lat * 0.32 + (r()-0.5)*0.28;
+    const len = isStubble ? (1.5 + r()*4.5) : (4 + r()*12);
+    const ex  = px + Math.sin(ang) * len + (r()-0.5)*2.5;
+    const ey  = py + Math.cos(ang) * len;
+    octx.globalAlpha = 0.60 + r() * 0.38;
+    octx.strokeStyle = `rgb(${Math.round(r()*9)},${Math.round(r()*4)},0)`;
+    octx.lineWidth   = 0.8 + r() * 1.8;
+    octx.shadowBlur  = 0.8;
+    octx.shadowColor = 'rgba(1,0,0,0.25)';
+    octx.beginPath(); octx.moveTo(px, py); octx.lineTo(ex, ey); octx.stroke();
+  }
+
+  /* Layer 2 — main color curved fibers (bezier for natural curl) */
+  octx.shadowBlur = 0;
+  for(let i = 0; i < Math.round(fiberCount * 0.55); i++){
+    const px  = bx + r() * bw;
+    const py  = by + r() * bh;
+    const lat = (px - chin.x) / (W * 0.55);
+    const ang = Math.PI*0.50 + lat * 0.28 + (r()-0.5)*0.38;
+    const len = isStubble ? (2 + r()*6) : (5 + r()*16);
+    const ex  = px + Math.sin(ang) * len;
+    const ey  = py + Math.cos(ang) * len;
+    /* Tight natural curl */
+    const cpx = (px + ex)/2 + (r()-0.5) * len * 0.22;
+    const cpy = (py + ey)/2 + (r()-0.5) * len * 0.10;
+    const shade = Math.round(8 + r() * 32);
+    octx.globalAlpha = 0.40 + r() * 0.55;
+    octx.strokeStyle = `rgb(${shade},${Math.round(shade*0.46)},${Math.round(shade*0.17)})`;
+    octx.lineWidth   = 0.45 + r() * (isStubble ? 1.1 : 1.4);
+    octx.beginPath(); octx.moveTo(px, py);
+    octx.quadraticCurveTo(cpx, cpy, ex, ey); octx.stroke();
+  }
+
+  /* Layer 3 — fine highlight wisps */
+  for(let i = 0; i < Math.round(fiberCount * 0.10); i++){
+    const px  = bx + r() * bw;
+    const py  = by + r() * bh;
+    const lat = (px - chin.x) / (W * 0.55);
+    const ang = Math.PI*0.50 + lat * 0.25 + (r()-0.5)*0.22;
+    const len = isStubble ? 2 : (3 + r()*8);
+    const ex  = px + Math.sin(ang)*len; const ey = py + Math.cos(ang)*len;
+    const shade = Math.round(35 + r() * 55);
+    octx.globalAlpha = 0.14 + r() * 0.22;
+    octx.strokeStyle = `rgb(${shade},${Math.round(shade*0.50)},${Math.round(shade*0.20)})`;
+    octx.lineWidth   = 0.35 + r() * 0.55;
+    octx.beginPath(); octx.moveTo(px, py); octx.lineTo(ex, ey); octx.stroke();
+  }
+  octx.restore();
+
+  /* 3. Edge feather — destination-in scoped to offscreen only */
+  octx.save();
+  octx.globalCompositeOperation = 'destination-in';
+  clipPoly(octx, poly);
+  octx.clip();
+  const cxF = bx + bw/2, cyF = by + bh * 0.40;
+  const fade = octx.createRadialGradient(cxF, cyF, Math.min(bw,bh)*0.12,
+                                          cxF, cyF, Math.max(bw,bh)*0.72);
+  fade.addColorStop(0,    'rgba(0,0,0,1.00)');
+  fade.addColorStop(0.65, 'rgba(0,0,0,0.94)');
+  fade.addColorStop(0.86, 'rgba(0,0,0,0.48)');
+  fade.addColorStop(1.00, 'rgba(0,0,0,0.00)');
+  octx.fillStyle = fade;
+  octx.fillRect(bx-4, by-4, bw+8, bh+8);
+  octx.restore();
+
+  /* 4. Blit offscreen → main canvas */
+  ctx.save();
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.globalAlpha = 0.90;
+  ctx.drawImage(off, 0, 0);
+  ctx.restore();
+
+  /* 5. Mustache */
+  if(hasMustache(style)) drawMoustache(L, W, chin, lipTop, lipBot, nose);
+}
+
+function hasMustache(s){
+  return ['Full Beard','Extended Goatee','Beardstache','Short Full Beard','Chevron Mustache'].includes(s);
+}
+
+function drawMoustache(L, W, chin, lipTop, lipBot, nose){
+  const mY  = (lipTop.y*0.55 + nose.y*0.45);
+  const mW  = W * 0.38;
+  const mbx = lipTop.x - mW;
+  const mby = mY - W * 0.048;
+  const mbw = mW * 2;
+  const mbh = W * 0.090;
+  const r   = seededRng(strHash('moustache'));
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(lipTop.x, mY, mW, mbh*0.88, 0, 0, Math.PI);
+  ctx.clip();
+  ctx.lineCap = 'round';
+  for(let i = 0; i < 160; i++){
+    const px   = mbx + r() * mbw;
+    const py   = mby + r() * mbh;
+    const side = px < lipTop.x ? -1 : 1;
+    const ang  = Math.PI*0.5 + side*(0.48 + r()*0.35);
+    const len  = 4 + r()*10;
+    const ex   = px + Math.cos(ang)*len;
+    const ey   = py + Math.sin(ang)*len*0.55;
+    const shade = Math.round(8 + r()*22);
+    ctx.globalAlpha = 0.72 + r()*0.26;
+    ctx.strokeStyle = `rgb(${shade},${Math.round(shade*0.45)},${Math.round(shade*0.17)})`;
+    ctx.lineWidth   = 0.55 + r()*0.90;
+    ctx.shadowBlur  = 0.4;
+    ctx.shadowColor = 'rgba(2,1,0,0.15)';
+    ctx.beginPath();
+    ctx.moveTo(px,py); ctx.lineTo(ex,ey); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function beardPoly(style, {chin,jawL,jawR,cheekL,cheekR,lipTop,lipBot,W}){
+  const CH = W * 0.24;
+  switch(style){
+    case 'Full Beard':
+      return [{x:cheekL.x-W*0.06,y:cheekL.y+W*0.01},jawL,
+              {x:chin.x-W*0.15,y:chin.y+CH},chin,{x:chin.x+W*0.15,y:chin.y+CH},
+              jawR,{x:cheekR.x+W*0.06,y:cheekR.y+W*0.01},
+              {x:lipTop.x+W*0.44,y:lipTop.y-W*0.01},{x:lipTop.x-W*0.44,y:lipTop.y-W*0.01}];
+    case 'Short Full Beard':
+      return [{x:cheekL.x,y:cheekL.y+W*0.04},jawL,
+              {x:chin.x-W*0.12,y:chin.y+W*0.14},chin,{x:chin.x+W*0.12,y:chin.y+W*0.14},
+              jawR,{x:cheekR.x,y:cheekR.y+W*0.04},
+              {x:lipTop.x+W*0.41,y:lipTop.y+W*0.01},{x:lipTop.x-W*0.41,y:lipTop.y+W*0.01}];
+    case 'Extended Goatee':
+      return [{x:chin.x-W*0.26,y:lipBot.y+W*0.04},{x:chin.x-W*0.20,y:chin.y+CH},
+              chin,{x:chin.x+W*0.20,y:chin.y+CH},{x:chin.x+W*0.26,y:lipBot.y+W*0.04},
+              {x:chin.x+W*0.19,y:lipBot.y-W*0.01},{x:chin.x-W*0.19,y:lipBot.y-W*0.01}];
+    case 'Goatee':
+      return [{x:chin.x-W*0.18,y:lipBot.y+W*0.03},{x:chin.x-W*0.14,y:chin.y+CH*0.80},
+              chin,{x:chin.x+W*0.14,y:chin.y+CH*0.80},{x:chin.x+W*0.18,y:lipBot.y+W*0.03},
+              {x:chin.x+W*0.13,y:lipBot.y},{x:chin.x-W*0.13,y:lipBot.y}];
+    case 'Beardstache':
+      return [{x:chin.x-W*0.24,y:lipBot.y+W*0.04},{x:chin.x-W*0.17,y:chin.y+W*0.16},
+              chin,{x:chin.x+W*0.17,y:chin.y+W*0.16},{x:chin.x+W*0.24,y:lipBot.y+W*0.04},
+              {x:chin.x+W*0.17,y:lipBot.y},{x:chin.x-W*0.17,y:lipBot.y}];
+    case 'Mutton Chops':
+      return [{x:cheekL.x-W*0.07,y:cheekL.y-W*0.02},jawL,
+              {x:jawL.x+W*0.26,y:lipTop.y+W*0.05},{x:cheekL.x+W*0.08,y:cheekL.y},
+              {x:chin.x,y:lipBot.y-W*0.04},{x:cheekR.x-W*0.08,y:cheekR.y},
+              {x:jawR.x-W*0.26,y:lipTop.y+W*0.05},jawR,{x:cheekR.x+W*0.07,y:cheekR.y-W*0.02}];
+    case 'Stubble':
+      return [{x:cheekL.x,y:cheekL.y+W*0.07},jawL,
+              {x:chin.x-W*0.10,y:chin.y+W*0.11},chin,{x:chin.x+W*0.10,y:chin.y+W*0.11},
+              jawR,{x:cheekR.x,y:cheekR.y+W*0.07},
+              {x:lipTop.x+W*0.38,y:lipTop.y+W*0.02},{x:lipTop.x-W*0.38,y:lipTop.y+W*0.02}];
+    default:
+      return [{x:cheekL.x,y:cheekL.y+W*0.04},jawL,
+              {x:chin.x-W*0.10,y:chin.y+W*0.17},chin,{x:chin.x+W*0.10,y:chin.y+W*0.17},
+              jawR,{x:cheekR.x,y:cheekR.y+W*0.04},
+              {x:lipTop.x+W*0.39,y:lipTop.y},{x:lipTop.x-W*0.39,y:lipTop.y}];
+  }
+}
+
+/* ── Seeded PRNG ── */
+function strHash(s){ let h=2166136261>>>0; for(const c of s) h=Math.imul(h^c.charCodeAt(0),16777619>>>0); return h; }
+function seededRng(seed){
+  let s = seed >>> 0;
+  return ()=>{ s+=0x6D2B79F5; let t=Math.imul(s^(s>>>15),1|s); t^=t+Math.imul(t^(t>>>7),61|t); return ((t^(t>>>14))>>>0)/4294967296; };
+}
+
+/* ════════════════════════════════════════════════════
+   MEDIAPIPE
+   ════════════════════════════════════════════════════ */
+let faceMesh;
+function initFaceMesh(){
+  faceMesh = new FaceMesh({ locateFile: f =>
+    `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`
+  });
+  faceMesh.setOptions({
+    maxNumFaces:1, refineLandmarks:true,
+    minDetectionConfidence:0.55, minTrackingConfidence:0.55,
+  });
+  faceMesh.onResults(onResults);
+}
+
+function onResults(results){
+  ctx.save();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+  ctx.restore();
+
+  if(results.multiFaceLandmarks?.length){
+    const L = results.multiFaceLandmarks[0];
+    lastLandmarks = L;
+    if(!faceDetected){
+      faceDetected = true;
+      statusDot.classList.add('on');
+      statusTx.textContent = 'Face detected ✓';
+    }
+    if(TYPE === 'beard') drawBeard(L, STYLE);
+    else                  drawHair(L, STYLE);
+  } else {
+    lastLandmarks = null;
+    if(faceDetected){
+      faceDetected = false;
+      statusDot.classList.remove('on');
+      statusTx.textContent = 'Looking for face…';
+    }
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   AI TRY-ON  — capture + POST to /api/ar-snapshot
+   ════════════════════════════════════════════════════ */
+const aiModal    = document.getElementById('aiModal');
+const aiSpinner  = document.getElementById('aiSpinner');
+const aiMsg      = document.getElementById('aiModalMsg');
+const aiImg      = document.getElementById('aiResultImg');
+const aiDlBtn    = document.getElementById('aiDlBtn');
+const aiBtn      = document.getElementById('aiBtn');
+
+const beforeImg   = document.getElementById('beforeImg');
+const aiComparison = document.getElementById('aiComparison');
+
+async function doAITryOn(){
+  if(aiBtn.disabled) return;
+
+  /* Capture the RAW (unmirrored) webcam frame */
+  const snap = document.createElement('canvas');
+  snap.width  = video.videoWidth  || canvas.width;
+  snap.height = video.videoHeight || canvas.height;
+  const sCtx  = snap.getContext('2d');
+  /* Undo the CSS mirror so server gets natural orientation */
+  sCtx.translate(snap.width, 0);
+  sCtx.scale(-1, 1);
+  sCtx.drawImage(video, 0, 0);
+  const imgData = snap.toDataURL('image/jpeg', 0.88);
+
+  /* Show modal with spinner — hide comparison until result ready */
+  aiComparison.style.display = 'none';
+  aiImg.style.display        = 'none';
+  aiDlBtn.style.display      = 'none';
+  aiSpinner.style.display    = 'block';
+  aiMsg.style.display        = 'block';
+  aiMsg.textContent = 'Generating your realistic style preview… This takes 3–8 seconds';
+  aiModal.classList.add('show');
+  aiBtn.disabled = true;
+
+  try {
+    const resp = await fetch('/api/ar-snapshot', {
+      method:  'POST',
+      headers: {'Content-Type': 'application/json'},
+      body:    JSON.stringify({ image: imgData, style: STYLE, type: TYPE }),
+    });
+    const json = await resp.json();
+
+    if(json.image){
+      aiSpinner.style.display    = 'none';
+      aiMsg.style.display        = 'none';
+      /* Populate before & after */
+      beforeImg.src              = imgData;          // original webcam frame
+      aiImg.src                  = json.image;
+      aiImg.style.display        = 'block';          // un-hide the after image
+      aiComparison.style.display = 'flex';           // show side-by-side
+      aiDlBtn.style.display      = 'inline-flex';
+      aiDlBtn.href               = json.image;
+      aiDlBtn.download           = `HairStyleAI_${STYLE.replace(/\s+/g,'_')}_AI.jpg`;
+    } else {
+      throw new Error(json.error || 'Unknown error');
+    }
+  } catch(err){
+    aiSpinner.style.display = 'none';
+    aiMsg.style.display     = 'block';
+    aiMsg.textContent = `⚠️ Could not generate preview: ${err.message}`;
+  } finally {
+    aiBtn.disabled = false;
+  }
+}
+
+function closeAIModal(){
+  aiModal.classList.remove('show');
+  aiComparison.style.display = 'none';
+  aiImg.style.display        = 'none';
+  beforeImg.src              = '';
+  aiDlBtn.style.display      = 'none';
+}
+
+/* ════════════════════════════════════════════════════
+   CAMERA
+   ════════════════════════════════════════════════════ */
+async function startCamera(){
+  permDiv.style.display = 'none';
+  loader.style.display  = 'flex';
+  loaderTx.textContent  = 'Requesting camera access…';
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'user', width:{ideal:1280}, height:{ideal:720}}, audio:false
+    });
+    video.srcObject = stream;
+    await new Promise(r => video.onloadedmetadata = r);
+    video.play();
+    loaderTx.textContent = 'Loading AI face mesh…';
+    initFaceMesh();
+    const camera = new Camera(video, {
+      onFrame: async () => { await faceMesh.send({image:video}); },
+      width:1280, height:720,
+    });
+    await camera.start();
+    loader.style.display = 'none';
+  } catch(err){
+    console.error('[AR]', err);
+    loader.style.display  = 'none';
+    permDiv.style.display = 'flex';
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   CAPTURE & CLOSE
+   ════════════════════════════════════════════════════ */
+function capturePhoto(){
+  const tmp = document.createElement('canvas');
+  tmp.width = canvas.width; tmp.height = canvas.height;
+  const tCtx = tmp.getContext('2d');
+  tCtx.translate(tmp.width,0); tCtx.scale(-1,1);
+  tCtx.drawImage(canvas,0,0);
+  const a = document.createElement('a');
+  a.download = `HairStyleAI_${STYLE.replace(/\s+/g,'_')}.png`;
+  a.href = tmp.toDataURL('image/png');
+  a.click();
+}
+function goBack(){
+  if(video.srcObject) video.srcObject.getTracks().forEach(t=>t.stop());
+  // Try query param first, then sessionStorage, then browser history
+  const returnUrl = params.get('returnUrl')
+                  || sessionStorage.getItem('arReturnUrl');
+  if(returnUrl){
+    sessionStorage.removeItem('arReturnUrl');
+    window.location.href = decodeURIComponent(returnUrl);
+  } else {
+    history.back();
+  }
+}
+
+window.addEventListener('DOMContentLoaded', startCamera);
+</script>
+{% endblock %}
