@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_bcrypt import Bcrypt
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
-from database import get_db
+from database import get_db, reset_db
 import re
 import datetime
 
@@ -40,6 +40,9 @@ def init_auth(bcrypt):
             try:
                 current_db = get_db()
                 if current_db is None:
+                    reset_db()   # clear stale cached failure
+                    current_db = get_db()
+                if current_db is None:
                     raise ConnectionFailure('No DB connection')
 
                 if current_db.users.find_one({'email': email}):
@@ -61,7 +64,7 @@ def init_auth(bcrypt):
                 return redirect(url_for('auth.login'))
 
             except (ConnectionFailure, ServerSelectionTimeoutError):
-                flash('Database unavailable. Please ensure MongoDB is running on port 27017.', 'error')
+                flash('Database unavailable. Please check your connection and try again.', 'error')
                 return render_template('register.html', username=username, email=email)
             except Exception as e:
                 flash(f'Error: {str(e)}', 'error')
@@ -85,10 +88,13 @@ def init_auth(bcrypt):
             try:
                 current_db = get_db()
                 if current_db is None:
+                    reset_db()   # clear stale cached failure
+                    current_db = get_db()
+                if current_db is None:
                     raise ConnectionFailure('No DB connection')
                 user = current_db.users.find_one({'email': email})
             except (ConnectionFailure, ServerSelectionTimeoutError):
-                flash('Database unavailable. Please ensure MongoDB is running on port 27017.', 'error')
+                flash('Database unavailable. Please check your connection and try again.', 'error')
                 return render_template('login.html', email=email)
             except Exception as e:
                 flash(f'Error: {str(e)}', 'error')
